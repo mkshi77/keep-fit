@@ -61,7 +61,7 @@ const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
             src={src}
             muted
             playsInline
-            webkit-playsinline="true"
+
             loop
             preload="auto"
             className="w-full h-full object-cover opacity-70 pointer-events-none"
