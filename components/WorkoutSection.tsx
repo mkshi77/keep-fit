@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { PLANS, DEFAULT_SETS } from '../constants';
 import { WorkoutSet, Exercise } from '../types';
 
@@ -15,47 +15,116 @@ interface WorkoutSectionProps {
 
 const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
+    const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
 
-        // Force muted property for iOS
+        // Force all necessary attributes for mobile playback
         video.muted = true;
-        video.setAttribute('playsinline', 'true');
-        video.setAttribute('webkit-playsinline', 'true');
+        video.defaultMuted = true;
+        video.volume = 0;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
+        video.setAttribute('x5-playsinline', ''); // Tencent X5 kernel (WeChat, QQ browsers)
+        video.setAttribute('x5-video-player-type', 'h5'); // Force H5 player on X5
+        video.setAttribute('x5-video-player-fullscreen', 'false');
+        video.setAttribute('x-webkit-airplay', 'allow');
 
-        // Attempt to play immediately
+        let playAttempts = 0;
+        const maxAttempts = 3;
+
+        // Aggressive play attempt with retries
         const attemptPlay = async () => {
+            if (playAttempts >= maxAttempts) {
+                console.log('Max play attempts reached');
+                return;
+            }
+
+            playAttempts++;
+
             try {
-                await video.play();
-            } catch (err) {
-                console.log('Autoplay failed, waiting for interaction', err);
+                // Ensure muted before each attempt
+                video.muted = true;
+                video.volume = 0;
+
+                const playPromise = video.play();
+
+                if (playPromise !== undefined) {
+                    await playPromise;
+                    console.log('Video playing successfully');
+                }
+            } catch (err: any) {
+                console.log(`Autoplay attempt ${playAttempts} failed:`, err.message);
+
+                // Retry after a short delay
+                if (playAttempts < maxAttempts) {
+                    setTimeout(attemptPlay, 300);
+                }
             }
         };
 
-        if (video.readyState >= 3) {
-            attemptPlay();
-        } else {
-            video.addEventListener('canplay', attemptPlay, { once: true });
-        }
+        // Use Intersection Observer for better mobile performance
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        attemptPlay();
+                    } else {
+                        video.pause();
+                    }
+                });
+            },
+            { threshold: 0.5 }
+        );
 
-        // Add a one-time global touch listener to unlock audio/video context if needed
-        const unlock = () => {
-            if (video.paused) video.play().catch(() => { });
-            window.removeEventListener('touchstart', unlock);
-            window.removeEventListener('click', unlock);
+        observer.observe(video);
+
+        // Multiple event listeners for different loading states
+        const onCanPlay = () => attemptPlay();
+        const onLoadedData = () => attemptPlay();
+        const onError = () => {
+            console.error('Video loading error');
+            setHasError(true);
         };
 
-        window.addEventListener('touchstart', unlock, { once: true, passive: true });
-        window.addEventListener('click', unlock, { once: true });
+        video.addEventListener('canplay', onCanPlay);
+        video.addEventListener('loadeddata', onLoadedData);
+        video.addEventListener('error', onError);
+
+        // Global interaction unlock (for restrictive browsers)
+        const unlockPlay = () => {
+            if (video.paused) {
+                attemptPlay();
+            }
+        };
+
+        // Listen to multiple interaction events
+        const events = ['touchstart', 'touchend', 'click', 'scroll'];
+        events.forEach(event => {
+            window.addEventListener(event, unlockPlay, { once: true, passive: true });
+        });
 
         return () => {
-            video.removeEventListener('canplay', attemptPlay);
-            window.removeEventListener('touchstart', unlock);
-            window.removeEventListener('click', unlock);
+            observer.disconnect();
+            video.removeEventListener('canplay', onCanPlay);
+            video.removeEventListener('loadeddata', onLoadedData);
+            video.removeEventListener('error', onError);
+            events.forEach(event => {
+                window.removeEventListener(event, unlockPlay);
+            });
         };
     }, [src]);
+
+    // Fallback to GIF/static image if video fails
+    if (hasError) {
+        return (
+            <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                <i className="fas fa-play-circle text-4xl text-gray-600"></i>
+            </div>
+        );
+    }
 
     return (
         <video
@@ -64,10 +133,11 @@ const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
             muted
             playsInline
             // @ts-ignore
-            webkit-playsinline="true"
-
+            webkit-playsinline=""
+            // @ts-ignore
+            x5-playsinline=""
             loop
-            preload="auto"
+            preload="metadata"
             className="w-full h-full object-cover opacity-70 pointer-events-none"
         />
     );
