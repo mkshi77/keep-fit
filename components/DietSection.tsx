@@ -69,14 +69,7 @@ const DietSection: React.FC<DietSectionProps> = ({ items, setItems, onFeedback }
                         <div className="flex justify-between items-center gap-3">
                             <div className="flex-1 min-w-0 space-y-0.5">
                                 <div className="flex items-center gap-0 relative">
-                                    <input
-                                        id={`time-input-${item.id}`}
-                                        type="time"
-                                        className="bg-transparent text-accent font-mono text-base font-black outline-none p-0 border-none w-[85px] leading-none text-center relative z-10"
-                                        value={item.time}
-                                        onChange={(e) => updateItem(item.id, 'time', e.target.value)}
-                                    />
-                                    {/* Icon moved to right and made larger for better touch target */}
+                                    {/* Make icon clickable to trigger picker */}
                                     <i
                                         className="far fa-clock text-sm text-gray-500 hover:text-accent cursor-pointer p-1 active:scale-90 transition-all"
                                         onClick={() => {
@@ -95,6 +88,13 @@ const DietSection: React.FC<DietSectionProps> = ({ items, setItems, onFeedback }
                                             }
                                         }}
                                     ></i>
+                                    <input
+                                        id={`time-input-${item.id}`}
+                                        type="time"
+                                        className="bg-transparent text-accent font-mono text-base font-black outline-none p-0 border-none w-[85px] leading-none text-center relative z-10"
+                                        value={item.time}
+                                        onChange={(e) => updateItem(item.id, 'time', e.target.value)}
+                                    />
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <input

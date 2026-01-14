@@ -22,6 +22,8 @@ const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
 
         // Force muted property for iOS
         video.muted = true;
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('webkit-playsinline', 'true');
 
         // Attempt to play immediately
         const attemptPlay = async () => {
@@ -61,6 +63,8 @@ const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
             src={src}
             muted
             playsInline
+            // @ts-ignore
+            webkit-playsinline="true"
 
             loop
             preload="auto"
