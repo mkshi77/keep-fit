@@ -16,6 +16,7 @@ interface WorkoutSectionProps {
 const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [hasError, setHasError] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(false);
 
     useEffect(() => {
         const video = videoRef.current;
@@ -32,90 +33,54 @@ const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
         video.setAttribute('x5-video-player-fullscreen', 'false');
         video.setAttribute('x-webkit-airplay', 'allow');
 
-        let playAttempts = 0;
-        const maxAttempts = 3;
-
-        // Aggressive play attempt with retries
-        const attemptPlay = async () => {
-            if (playAttempts >= maxAttempts) {
-                console.log('Max play attempts reached');
-                return;
-            }
-
-            playAttempts++;
-
+        // Simple autoplay attempt
+        const tryAutoplay = async () => {
             try {
-                // Ensure muted before each attempt
-                video.muted = true;
-                video.volume = 0;
-
-                const playPromise = video.play();
-
-                if (playPromise !== undefined) {
-                    await playPromise;
-                    console.log('Video playing successfully');
-                }
-            } catch (err: any) {
-                console.log(`Autoplay attempt ${playAttempts} failed:`, err.message);
-
-                // Retry after a short delay
-                if (playAttempts < maxAttempts) {
-                    setTimeout(attemptPlay, 300);
-                }
+                await video.play();
+                setIsPlaying(true);
+                console.log('Autoplay successful');
+            } catch (err) {
+                console.log('Autoplay blocked, waiting for user interaction');
+                setIsPlaying(false);
             }
         };
 
-        // Use Intersection Observer for better mobile performance
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        attemptPlay();
-                    } else {
-                        video.pause();
-                    }
-                });
-            },
-            { threshold: 0.5 }
-        );
+        // Try autoplay when video is ready
+        if (video.readyState >= 2) {
+            tryAutoplay();
+        } else {
+            video.addEventListener('loadeddata', tryAutoplay, { once: true });
+        }
 
-        observer.observe(video);
-
-        // Multiple event listeners for different loading states
-        const onCanPlay = () => attemptPlay();
-        const onLoadedData = () => attemptPlay();
-        const onError = () => {
+        // Error handling
+        const handleError = () => {
             console.error('Video loading error');
             setHasError(true);
         };
-
-        video.addEventListener('canplay', onCanPlay);
-        video.addEventListener('loadeddata', onLoadedData);
-        video.addEventListener('error', onError);
-
-        // Global interaction unlock (for restrictive browsers)
-        const unlockPlay = () => {
-            if (video.paused) {
-                attemptPlay();
-            }
-        };
-
-        // Listen to multiple interaction events
-        const events = ['touchstart', 'touchend', 'click', 'scroll'];
-        events.forEach(event => {
-            window.addEventListener(event, unlockPlay, { once: true, passive: true });
-        });
+        video.addEventListener('error', handleError);
 
         return () => {
-            observer.disconnect();
-            video.removeEventListener('canplay', onCanPlay);
-            video.removeEventListener('loadeddata', onLoadedData);
-            video.removeEventListener('error', onError);
-            events.forEach(event => {
-                window.removeEventListener(event, unlockPlay);
-            });
+            video.removeEventListener('error', handleError);
         };
     }, [src]);
+
+    // Handle manual play on click
+    const handleVideoClick = async () => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        try {
+            if (video.paused) {
+                await video.play();
+                setIsPlaying(true);
+            } else {
+                video.pause();
+                setIsPlaying(false);
+            }
+        } catch (err) {
+            console.error('Play failed:', err);
+        }
+    };
 
     // Fallback to GIF/static image if video fails
     if (hasError) {
@@ -127,19 +92,29 @@ const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
     }
 
     return (
-        <video
-            ref={videoRef}
-            src={src}
-            muted
-            playsInline
-            // @ts-ignore
-            webkit-playsinline=""
-            // @ts-ignore
-            x5-playsinline=""
-            loop
-            preload="metadata"
-            className="w-full h-full object-cover opacity-70 pointer-events-none"
-        />
+        <div className="relative w-full h-full" onClick={handleVideoClick}>
+            <video
+                ref={videoRef}
+                src={src}
+                muted
+                playsInline
+                // @ts-ignore
+                webkit-playsinline=""
+                // @ts-ignore
+                x5-playsinline=""
+                loop
+                preload="metadata"
+                className="w-full h-full object-cover opacity-70 cursor-pointer"
+            />
+            {/* Show play button overlay if not playing */}
+            {!isPlaying && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="bg-black/50 rounded-full p-4">
+                        <i className="fas fa-play text-white text-3xl"></i>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 
