@@ -9,6 +9,7 @@ import WorkoutSection from './components/WorkoutSection';
 import Toast from './components/Toast';
 import FeedbackLayer from './components/FeedbackLayer';
 import ExerciseModal from './components/ExerciseModal';
+import DataManagement from './components/DataManagement';
 import { WeightModal, ActionSheet, HistoryModal, CelebrationLayer } from './components/Modals';
 
 const INITIAL_DATA: AppData = {
@@ -195,7 +196,7 @@ const App: React.FC = () => {
       <FeedbackLayer items={feedbacks} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <Header filledCount={Object.keys(appData.history).length} />
+      <Header filledCount={Object.keys(appData.history).length} onOpenSettings={() => setModal('data')} />
       <WeightChart records={appData.weightRecords} onAddWeight={() => setModal('weight')} />
       <StatsOverview history={appData.history} onDateClick={(date, rec) => { setModalData({ date, record: rec }); setModal('history'); }} />
 
@@ -217,8 +218,8 @@ const App: React.FC = () => {
         <button
           onClick={handleMainAction}
           className={`pointer-events-auto w-full max-w-[440px] h-[58px] font-black text-xl italic flex items-center justify-center transition-all duration-200 active:scale-95 ${isFilled
-              ? 'bg-[#111] text-accent border-2 border-accent shadow-[0_0_15px_rgba(204,255,0,0.15)]'
-              : 'bg-accent text-black shadow-[0_0_25px_rgba(204,255,0,0.4)]'
+            ? 'bg-[#111] text-accent border-2 border-accent shadow-[0_0_15px_rgba(204,255,0,0.15)]'
+            : 'bg-accent text-black shadow-[0_0_25px_rgba(204,255,0,0.4)]'
             }`}
           style={{ clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)' }}
         >
@@ -237,6 +238,7 @@ const App: React.FC = () => {
       {modal === 'actionSheet' && <ActionSheet onClose={() => setModal('none')} onUndo={undoCheckIn} />}
       {modal === 'history' && modalData && <HistoryModal date={modalData.date} record={modalData.record} onClose={() => setModal('none')} />}
       {modal === 'exercise' && modalData && <ExerciseModal exercise={modalData as Exercise} onClose={() => setModal('none')} onStart={() => { setModal('none'); showToast("开始训练!", "success"); }} />}
+      {modal === 'data' && <DataManagement onClose={() => setModal('none')} onSuccess={(msg) => showToast(msg, 'success')} onError={(msg) => showToast(msg, 'error')} />}
       {modal === 'celebration' && <CelebrationLayer type={modalData?.type || 'workout'} onFinish={() => { setModal('none'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />}
     </div>
   );

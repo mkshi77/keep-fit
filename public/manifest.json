@@ -1,0 +1,24 @@
+{
+    "name": "Fill Up 2026 - 细狗长了么",
+    "short_name": "Fill Up",
+    "description": "健身打卡与训练追踪应用",
+    "start_url": "./",
+    "display": "standalone",
+    "background_color": "#000000",
+    "theme_color": "#ccff00",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "./icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "./icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}

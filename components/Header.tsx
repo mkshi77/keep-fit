@@ -2,10 +2,10 @@ import React from 'react';
 
 interface HeaderProps {
   filledCount: number;
+  onOpenSettings: () => void;
 }
 
-
-const Header: React.FC<HeaderProps> = ({ filledCount }) => {
+const Header: React.FC<HeaderProps> = ({ filledCount, onOpenSettings }) => {
   const today = new Date();
 
   // Format Date: 01/12
@@ -16,10 +16,16 @@ const Header: React.FC<HeaderProps> = ({ filledCount }) => {
   return (
     <header className="px-5 pt-12 pb-2 bg-black">
       {/* Title Row */}
-      <div className="mb-2">
+      <div className="mb-2 flex justify-between items-center">
         <h1 className="text-3xl font-black italic text-white tracking-wider transform -skew-x-6">
-          细狗，长了么<span className="text-accent">?</span>
+          细狗,长了么<span className="text-accent">?</span>
         </h1>
+        <button
+          onClick={onOpenSettings}
+          className="w-9 h-9 rounded-full bg-[#1a1a1a] border border-[#222] text-gray-500 hover:text-accent hover:border-accent/30 transition-all flex items-center justify-center"
+        >
+          <i className="fas fa-cog text-sm"></i>
+        </button>
       </div>
 
       {/* Stats Row (Date & Streak) */}

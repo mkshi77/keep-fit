@@ -28,7 +28,7 @@ export interface Exercise {
   id: string;
   name: string;
   englishName: string;
-  gif: string; 
+  gif: string;
   steps: string[];
   tips: string;
   targetMuscles: string[];
@@ -49,7 +49,7 @@ export interface LevelConfig {
   title: string;
 }
 
-export type ModalType = 'none' | 'weight' | 'history' | 'actionSheet' | 'celebration' | 'exercise';
+export type ModalType = 'none' | 'weight' | 'history' | 'actionSheet' | 'celebration' | 'exercise' | 'data';
 
 export interface ToastState {
   show: boolean;
