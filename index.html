@@ -98,6 +98,31 @@
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
     <script>
+        // PWA Install Prompt Handler (Android)
+        let deferredPrompt;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            console.log('PWA install prompt available');
+
+            // Optionally show install button or auto-trigger
+            // For now, auto-trigger after 2 seconds
+            setTimeout(() => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                            console.log('User accepted the install prompt');
+                        }
+                        deferredPrompt = null;
+                    });
+                }
+            }, 2000);
+        });
+
         // Register service worker for PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
