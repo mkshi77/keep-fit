@@ -37,29 +37,25 @@ const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
             (entries) => {
                 entries.forEach((entry) => {
                     if (entry.isIntersecting) {
-                        // 进入视口：加载并播放
-                        if (!isLoaded) {
-                            video.load();
-                            setIsLoaded(true);
-                        }
+                        // 进入视口：播放
                         video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
                     } else {
-                        // 离开视口：暂停以节省资源
+                        // 离开视口：暂停
                         video.pause();
                         setIsPlaying(false);
                     }
                 });
             },
-            { threshold: 0.5 } // 50% 可见时触发
+            { threshold: 0.5 }
         );
 
         observer.observe(container);
 
         return () => {
             observer.disconnect();
-            video.pause(); // 卸载时确保暂停
+            video.pause();
         };
-    }, [src, isLoaded]);
+    }, [src]);
 
     const handleVideoClick = async () => {
         const video = videoRef.current;
@@ -82,7 +78,7 @@ const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
                 muted
                 loop
                 playsInline
-                preload="none" // 默认不预加载，由Observer接管
+                preload="metadata" // 预加载元数据，确保有封面
                 className="w-full h-full object-cover opacity-70 cursor-pointer"
             />
             {!isPlaying && (

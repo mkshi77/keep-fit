@@ -16,23 +16,24 @@ const ExerciseModal: React.FC<ExerciseModalProps> = ({ exercise, onClose, onStar
     useEffect(() => {
         const video = videoRef.current;
         if (video && isVideo) {
-            // 关键属性设置 - 确保移动端兼容性
+            // 关键属性设置
             video.muted = true;
             video.defaultMuted = true;
             video.playsInline = true;
+            video.setAttribute('webkit-playsinline', '');
 
+            // 尝试播放
             const attemptPlay = async () => {
                 try {
-                    video.load();
                     await video.play();
                     setIsPlaying(true);
-                } catch (e) {
-                    console.log("Autoplay blocked/failed", e);
+                } catch {
                     setIsPlaying(false);
                 }
             };
 
-            attemptPlay();
+            // 稍微延迟，等待 Modal 动画完成
+            const t = setTimeout(attemptPlay, 300);
 
             const onPlay = () => setIsPlaying(true);
             const onPause = () => setIsPlaying(false);
@@ -41,6 +42,7 @@ const ExerciseModal: React.FC<ExerciseModalProps> = ({ exercise, onClose, onStar
             video.addEventListener('pause', onPause);
 
             return () => {
+                clearTimeout(t);
                 video.removeEventListener('play', onPlay);
                 video.removeEventListener('pause', onPause);
             };
