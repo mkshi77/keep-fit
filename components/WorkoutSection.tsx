@@ -97,6 +97,7 @@ const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
                 ref={videoRef}
                 src={src}
                 muted
+                autoPlay
                 playsInline
                 // @ts-ignore
                 webkit-playsinline=""
