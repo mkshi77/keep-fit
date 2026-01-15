@@ -15,99 +15,76 @@ interface WorkoutSectionProps {
 
 const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
-    const [hasError, setHasError] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
         const video = videoRef.current;
-        if (!video) return;
+        const container = containerRef.current;
+        if (!video || !container) return;
 
-        // Force all necessary attributes for mobile playback
+        // 设置视频属性
         video.muted = true;
         video.defaultMuted = true;
-        video.volume = 0;
-        video.setAttribute('playsinline', '');
+        video.playsInline = true;
         video.setAttribute('webkit-playsinline', '');
-        video.setAttribute('x5-playsinline', ''); // Tencent X5 kernel (WeChat, QQ browsers)
-        video.setAttribute('x5-video-player-type', 'h5'); // Force H5 player on X5
+        video.setAttribute('x5-playsinline', '');
+        video.setAttribute('x5-video-player-type', 'h5');
         video.setAttribute('x5-video-player-fullscreen', 'false');
-        video.setAttribute('x-webkit-airplay', 'allow');
 
-        // Simple autoplay attempt
-        const tryAutoplay = async () => {
-            try {
-                await video.play();
-                setIsPlaying(true);
-                console.log('Autoplay successful');
-            } catch (err) {
-                console.log('Autoplay blocked, waiting for user interaction');
-                setIsPlaying(false);
-            }
-        };
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        // 进入视口：加载并播放
+                        if (!isLoaded) {
+                            video.load();
+                            setIsLoaded(true);
+                        }
+                        video.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+                    } else {
+                        // 离开视口：暂停以节省资源
+                        video.pause();
+                        setIsPlaying(false);
+                    }
+                });
+            },
+            { threshold: 0.5 } // 50% 可见时触发
+        );
 
-        // Try autoplay when video is ready
-        if (video.readyState >= 2) {
-            tryAutoplay();
-        } else {
-            video.addEventListener('loadeddata', tryAutoplay, { once: true });
-        }
-
-        // Error handling
-        const handleError = () => {
-            console.error('Video loading error');
-            setHasError(true);
-        };
-        video.addEventListener('error', handleError);
+        observer.observe(container);
 
         return () => {
-            video.removeEventListener('error', handleError);
+            observer.disconnect();
+            video.pause(); // 卸载时确保暂停
         };
-    }, [src]);
+    }, [src, isLoaded]);
 
-    // Handle manual play on click
     const handleVideoClick = async () => {
         const video = videoRef.current;
         if (!video) return;
 
-        try {
-            if (video.paused) {
-                await video.play();
-                setIsPlaying(true);
-            } else {
-                video.pause();
-                setIsPlaying(false);
-            }
-        } catch (err) {
-            console.error('Play failed:', err);
+        if (video.paused) {
+            await video.play().catch(() => { });
+            setIsPlaying(true);
+        } else {
+            video.pause();
+            setIsPlaying(false);
         }
     };
 
-    // Fallback to GIF/static image if video fails
-    if (hasError) {
-        return (
-            <div className="w-full h-full bg-gray-900 flex items-center justify-center">
-                <i className="fas fa-play-circle text-4xl text-gray-600"></i>
-            </div>
-        );
-    }
-
     return (
-        <div className="relative w-full h-full" onClick={handleVideoClick}>
+        <div ref={containerRef} className="relative w-full h-full" onClick={handleVideoClick}>
             <video
                 ref={videoRef}
                 src={src}
                 muted
-                autoPlay
-                playsInline
-                // @ts-ignore
-                webkit-playsinline=""
-                // @ts-ignore
-                x5-playsinline=""
                 loop
-                preload="metadata"
+                playsInline
+                preload="none" // 默认不预加载，由Observer接管
                 className="w-full h-full object-cover opacity-70 cursor-pointer"
             />
-            {/* Show play button overlay if not playing */}
             {!isPlaying && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="bg-black/50 rounded-full p-4">
