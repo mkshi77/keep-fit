@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { ExercisePlan } from '../types';
+import ExerciseCover from './ExerciseCover';
 
 interface ExerciseModalProps {
   exercise: ExercisePlan;
@@ -42,7 +43,7 @@ const ExerciseModal: React.FC<ExerciseModalProps> = ({ exercise, onClose, onStar
         </div>
 
         <div className="w-full aspect-video bg-black relative flex items-center justify-center border-y border-[#222] overflow-hidden cursor-pointer" onClick={toggleVideo}>
-          {exercise.video ? <video ref={videoRef} src={exercise.video} className="w-full h-full object-contain" playsInline autoPlay muted loop preload="auto" /> : <div className="text-center px-8"><i className="fas fa-video-slash text-gray-700 text-4xl" /><p className="text-gray-600 text-xs mt-3">暂无匹配的本地教学视频</p></div>}
+          {exercise.video ? <video ref={videoRef} src={exercise.video} className="w-full h-full object-contain" playsInline autoPlay muted loop preload="auto" /> : <ExerciseCover exercise={exercise} />}
           {exercise.video && !isPlaying && <div className="absolute inset-0 flex items-center justify-center bg-black/30"><div className="w-14 h-14 rounded-full bg-accent/90 flex items-center justify-center pl-1"><i className="fas fa-play text-black text-2xl" /></div></div>}
         </div>
 

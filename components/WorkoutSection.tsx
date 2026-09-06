@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { DEFAULT_SETS } from '../constants';
 import type { ExerciseFeedback, ExercisePlan, TodayWorkout, WorkoutSet } from '../types';
+import ExerciseCover from './ExerciseCover';
 
 interface WorkoutSectionProps {
   workout: TodayWorkout | null;
@@ -161,7 +162,7 @@ const WorkoutSection: React.FC<WorkoutSectionProps> = ({
             return (
               <div key={exercise.exerciseId} className="bg-card rounded-2xl overflow-hidden border border-[#222] shadow-xl">
                 <div className="w-full h-[160px] bg-black flex items-center justify-center relative cursor-pointer" onClick={() => onOpenExerciseModal(exercise)}>
-                  {exercise.video ? <PreviewVideo src={exercise.video} /> : <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#202020_0,#050505_70%)] flex items-center justify-center"><i className="fas fa-dumbbell text-[#252525] text-6xl" /></div>}
+                  {exercise.video ? <PreviewVideo src={exercise.video} /> : <ExerciseCover exercise={exercise} />}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
                   <div className="absolute bottom-3 left-4 right-4 flex justify-between items-end pointer-events-none">
                     <div>

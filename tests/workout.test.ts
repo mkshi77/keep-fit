@@ -7,6 +7,7 @@ import { chatCompletionUrl } from '../api/ai/chat';
 import todayHandler from '../api/workout/today';
 import aiHandler from '../api/ai/chat';
 import type { ApiResponse } from '../server/http';
+import { getYouTubeThumbnail } from '../components/ExerciseCover';
 
 const title = (value: string): NotionProperty => ({ type: 'title', title: [{ plain_text: value }] });
 const text = (value: string): NotionProperty => ({ type: 'rich_text', rich_text: [{ plain_text: value }] });
@@ -111,6 +112,12 @@ describe('completion mapping', () => {
 });
 
 describe('provider and PWA boundaries', () => {
+  it('derives covers for direct YouTube links without guessing search-result thumbnails', () => {
+    expect(getYouTubeThumbnail('https://www.youtube.com/watch?v=abcDEF_1234')).toBe('https://i.ytimg.com/vi/abcDEF_1234/hqdefault.jpg');
+    expect(getYouTubeThumbnail('https://youtu.be/abcDEF_1234')).toBe('https://i.ytimg.com/vi/abcDEF_1234/hqdefault.jpg');
+    expect(getYouTubeThumbnail('https://www.youtube.com/results?search_query=bench')).toBeUndefined();
+  });
+
   it('normalizes OpenAI-compatible chat endpoints', () => {
     expect(chatCompletionUrl('https://api.deepseek.com')).toBe('https://api.deepseek.com/v1/chat/completions');
     expect(chatCompletionUrl('https://glm.example/v1/')).toBe('https://glm.example/v1/chat/completions');

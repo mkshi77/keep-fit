@@ -36,6 +36,7 @@ const PROPERTY = {
   baseline: ['当前基线', '基线', 'Baseline'],
   youtube: ['中文教学', 'YouTube', 'youtube'],
   video: ['本地视频', '视频', 'Video'],
+  cover: ['封面', '教学封面', '缩略图', 'Cover'],
   libraryStatus: ['库状态', 'Library Status'],
   enabled: ['启用', 'Enabled'],
   planStatus: ['计划状态', '训练状态', '执行状态', '状态', 'Plan Status'],
@@ -219,6 +220,7 @@ export const joinWorkoutPages = (
       baseline: firstString(libraryPage.properties, [...PROPERTY.baseline]) || firstString(trainingPage.properties, [...PROPERTY.baseline]) || undefined,
       youtube: firstString(libraryPage.properties, [...PROPERTY.youtube]) || youtubeFor(name),
       video: safeVideo(exerciseId, videoCandidate),
+      cover: firstString(libraryPage.properties, [...PROPERTY.cover]) || undefined,
       completed: firstBoolean(trainingPage.properties, [...PROPERTY.completed]) ?? false,
       ...(hasSavedValues(savedSets, savedFeedback) ? { savedSets, savedFeedback } : {}),
     }];

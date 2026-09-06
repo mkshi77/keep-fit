@@ -29,6 +29,8 @@ vercel dev
 
 未配置 Notion 时，`GET /api/workout/today` 会返回本地 A/B/C 容灾计划；容灾模式不会伪造 Notion 写入成功。未配置 AI 时，聊天接口返回可恢复的 503，主 App 继续工作。
 
+AI 教练只接收前端提供的今日训练与当前草稿上下文。`/api/ai/chat` 不导入 Notion 客户端、不持有任意数据库查询工具，也不允许修改未来计划或删除记录。
+
 ## 验证
 
 ```bash

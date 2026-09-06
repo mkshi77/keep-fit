@@ -23,6 +23,7 @@ export interface ExercisePlan {
   baseline?: string;
   youtube?: string;
   video?: string;
+  cover?: string;
 }
 
 export interface WorkoutSet {
