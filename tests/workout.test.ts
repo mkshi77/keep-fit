@@ -36,9 +36,10 @@ const libraryPage = (id: string, name: string): NotionPage => ({
   },
 });
 
-const trainingPage = (id: string, order: number, status = '当前计划'): NotionPage => ({
+const trainingPage = (id: string, order: number, status = '当前计划', pageTitle?: string): NotionPage => ({
   id: `execution-${id}`,
   properties: {
+    ...(pageTitle ? { 训练记录: title(pageTitle) } : {}),
     日期: { type: 'date', date: { start: '2026-09-07' } },
     训练日: select('A'),
     动作ID: text(id),
@@ -83,6 +84,22 @@ describe('Notion join', () => {
     expect(workout.trainingDay).toBe('A');
     expect(workout.exercises.map((exercise) => exercise.exerciseId)).toEqual(['smith_flat_bench', 'seated_cable_row', 'leg_press']);
     expect(workout.exercises.every((exercise) => exercise.notionPageId?.startsWith('execution-'))).toBe(true);
+  });
+
+  it('deduplicates legacy same-day rows and prefers the canonical ISO-dated row', () => {
+    const legacy = trainingPage('smith_flat_bench', 1, '当前计划', '9/7 A｜史密斯平板卧推');
+    legacy.id = 'legacy-row';
+    legacy.created_time = '2026-09-07T02:00:00.000Z';
+    const canonical = trainingPage('smith_flat_bench', 1, '当前计划', '2026-09-07｜A｜史密斯平板卧推');
+    canonical.id = 'canonical-row';
+    canonical.created_time = '2026-09-07T01:00:00.000Z';
+
+    const workout = joinWorkoutPages('2026-09-07', [legacy, canonical], [
+      libraryPage('smith_flat_bench', '史密斯平板卧推'),
+    ]);
+
+    expect(workout.exercises).toHaveLength(1);
+    expect(workout.exercises[0].notionPageId).toBe('canonical-row');
   });
 });
 

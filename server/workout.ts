@@ -149,6 +149,36 @@ const isActiveLibraryPage = (page: NotionPage) => {
   return (!status || status === '当前主计划') && enabled !== false;
 };
 
+const pageTitle = (page: NotionPage) => {
+  const titleProperty = Object.values(page.properties).find((property) => property.type === 'title');
+  return propertyString(titleProperty).trim();
+};
+
+const preferTrainingPage = (date: string, current: NotionPage, candidate: NotionPage) => {
+  const canonicalPrefix = `${date}｜`;
+  const currentIsCanonical = pageTitle(current).startsWith(canonicalPrefix);
+  const candidateIsCanonical = pageTitle(candidate).startsWith(canonicalPrefix);
+  if (currentIsCanonical !== candidateIsCanonical) return candidateIsCanonical ? candidate : current;
+
+  const currentCreated = Date.parse(current.created_time ?? '');
+  const candidateCreated = Date.parse(candidate.created_time ?? '');
+  if (Number.isFinite(currentCreated) && Number.isFinite(candidateCreated) && currentCreated !== candidateCreated) {
+    return candidateCreated > currentCreated ? candidate : current;
+  }
+  return candidate.id > current.id ? candidate : current;
+};
+
+const dedupeTrainingPages = (date: string, pages: NotionPage[]) => {
+  const byExerciseId = new Map<string, NotionPage>();
+  pages.forEach((page) => {
+    const exerciseId = firstString(page.properties, [...PROPERTY.exerciseId]);
+    if (!exerciseId) return;
+    const existing = byExerciseId.get(exerciseId);
+    byExerciseId.set(exerciseId, existing ? preferTrainingPage(date, existing, page) : page);
+  });
+  return [...byExerciseId.values()];
+};
+
 const localVideoByExerciseId: Partial<Record<string, string>> = {
   seated_cable_row: '/videos/seated-cable-row.mp4',
   lat_pulldown: '/videos/lat-pulldown.mp4',
@@ -196,8 +226,10 @@ export const joinWorkoutPages = (
     if (id) libraryById.set(id, page);
   });
 
-  const activePages = trainingPages
-    .filter((page) => isPageForDate(page, date) && isActiveTrainingPage(page))
+  const activePages = dedupeTrainingPages(
+    date,
+    trainingPages.filter((page) => isPageForDate(page, date) && isActiveTrainingPage(page)),
+  )
     .sort((a, b) => (firstNumber(a.properties, [...PROPERTY.order]) ?? 999) - (firstNumber(b.properties, [...PROPERTY.order]) ?? 999));
 
   const exercises = activePages.flatMap<TodayExercise>((trainingPage) => {
