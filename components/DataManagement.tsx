@@ -64,7 +64,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
     };
 
     const handleClearData = () => {
-        if (window.confirm('确定要清除所有数据吗？此操作不可恢复！')) {
+        if (window.confirm('确定要清除本机草稿、缓存和本地备份吗？Notion 正式记录不会被删除。')) {
             localStorage.removeItem(DB_KEY);
             onSuccess('数据已清除，页面即将刷新');
             setTimeout(() => window.location.reload(), 1500);
@@ -107,7 +107,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
                         className="w-full bg-transparent text-red-500 font-bold py-3.5 rounded-xl hover:bg-red-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 border border-red-500/30"
                     >
                         <i className="fas fa-trash"></i>
-                        清除所有数据
+                        清除本地数据
                     </button>
 
                     <input
@@ -121,7 +121,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
                     <div className="mt-4 p-3 bg-accent/5 border border-accent/10 rounded-lg">
                         <p className="text-accent/80 text-xs leading-relaxed">
                             <i className="fas fa-info-circle mr-1"></i>
-                            导出的数据文件包含所有训练记录、体重数据和饮食记录。建议定期备份。
+                            导出文件是 localStorage 本地备份，包含训练草稿、缓存、体重和饮食数据；不会导出或修改 Notion 中的其他记录。
                         </p>
                     </div>
                 </div>

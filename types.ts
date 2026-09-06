@@ -1,3 +1,5 @@
+export type TrainingDay = 'A' | 'B' | 'C';
+
 export interface DietItem {
   id: number;
   time: string;
@@ -11,27 +13,52 @@ export interface WeightRecord {
   val: string;
 }
 
+export interface ExercisePlan {
+  exerciseId: string;
+  notionPageId?: string;
+  name: string;
+  planSets: number;
+  planReps: string;
+  planWeight?: string;
+  baseline?: string;
+  youtube?: string;
+  video?: string;
+}
+
 export interface WorkoutSet {
   weight: string;
   reps: string;
   completed: boolean;
 }
 
+export interface ExerciseFeedback {
+  rir?: number;
+  asymmetry?: 0 | 1 | 2 | 3;
+  discomfort?: number;
+}
+
+export interface TodayExercise extends ExercisePlan {
+  completed?: boolean;
+  savedSets?: WorkoutSet[];
+  savedFeedback?: ExerciseFeedback;
+}
+
+export interface TodayWorkout {
+  date: string;
+  trainingDay: TrainingDay | null;
+  isRecoveryDay: boolean;
+  source: 'notion' | 'fallback';
+  exercises: TodayExercise[];
+  warning?: string;
+}
+
 export interface HistoryRecord {
   type: 'workout' | 'rest';
   diet: DietItem[];
-  workoutPlan: 'upper' | 'lower' | null;
-  workoutSession?: Record<string, WorkoutSet[]>; // Captured snapshot of actual performance
-}
-
-export interface Exercise {
-  id: string;
-  name: string;
-  englishName: string;
-  gif: string;
-  steps: string[];
-  tips: string;
-  targetMuscles: string[];
+  workoutPlan: TrainingDay | null;
+  workoutSession?: Record<string, WorkoutSet[]>;
+  workoutFeedback?: Record<string, ExerciseFeedback>;
+  syncedToNotion?: boolean;
 }
 
 export interface AppData {
@@ -40,8 +67,22 @@ export interface AppData {
   weightRecords: WeightRecord[];
   lastWeights: Record<string, string>;
   currentDiet: DietItem[];
-  currentPlan: 'upper' | 'lower';
   currentSession: Record<string, WorkoutSet[]>;
+  currentFeedback: Record<string, ExerciseFeedback>;
+  workoutCache?: TodayWorkout;
+}
+
+export interface WorkoutCompletionExercise {
+  exerciseId: string;
+  notionPageId: string;
+  sets: WorkoutSet[];
+  feedback: ExerciseFeedback;
+}
+
+export interface WorkoutCompletionPayload {
+  date: string;
+  trainingDay: TrainingDay;
+  exercises: WorkoutCompletionExercise[];
 }
 
 export interface LevelConfig {
@@ -63,4 +104,15 @@ export interface FeedbackItem {
   y: number;
   text: string;
   color: string;
+}
+
+export interface AIChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface AIWorkoutContext {
+  workout: TodayWorkout | null;
+  session: Record<string, WorkoutSet[]>;
+  feedback: Record<string, ExerciseFeedback>;
 }

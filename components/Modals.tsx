@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { HistoryRecord } from '../types';
-import { PLANS, DB_KEY } from '../constants';
+import { DB_KEY, FALLBACK_PLANS } from '../constants';
 
 // --- Overlay Helper ---
 const Overlay: React.FC<{ children: React.ReactNode; onClick?: () => void }> = ({ children, onClick }) => (
@@ -65,7 +65,7 @@ interface ActionSheetProps {
 }
 export const ActionSheet: React.FC<ActionSheetProps> = ({ onClose, onUndo }) => {
     const handleReset = () => {
-        if (confirm("确定要清空所有历史数据和记录吗？此操作无法撤销。")) {
+        if (confirm("确定要清空本地草稿、缓存和备份吗？Notion 正式记录不会被删除。")) {
             localStorage.removeItem(DB_KEY);
             window.location.reload();
         }
@@ -82,7 +82,7 @@ export const ActionSheet: React.FC<ActionSheetProps> = ({ onClose, onUndo }) => 
                 </button>
                 {/* 修正此处属性名: 从 handleReset 改为 onClick */}
                 <button onClick={handleReset} className="w-full py-4 text-red-700 font-bold text-sm hover:bg-[#111] transition-colors">
-                    重置所有数据 (Debug)
+                    重置本地数据 (Debug)
                 </button>
                 <button onClick={onClose} className="w-full py-4 text-gray-500 text-sm hover:bg-[#111] transition-colors border-t border-[#333]">
                     取消
@@ -99,7 +99,9 @@ interface HistoryModalProps {
     onClose: () => void;
 }
 export const HistoryModal: React.FC<HistoryModalProps> = ({ date, record, onClose }) => {
-    const getExercises = (plan: 'upper' | 'lower') => PLANS[plan] || [];
+    const exerciseNames = Object.fromEntries(
+        Object.values(FALLBACK_PLANS).flat().map((exercise) => [exercise.exerciseId, exercise.name]),
+    );
 
     return (
         <Overlay onClick={onClose}>
@@ -119,38 +121,32 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({ date, record, onClos
                                 </span>
                             </div>
                             
-                            {record.workoutPlan && (
+                            {record.type === 'workout' && (
                                  <div>
                                     <div className="flex items-center justify-between mb-3">
-                                        <span className="text-gray-500 text-xs uppercase">部位</span>
+                                        <span className="text-gray-500 text-xs uppercase">训练计划</span>
                                         <span className="text-white font-bold uppercase">
-                                            {record.workoutPlan === 'upper' ? '上半身' : '下半身'}
+                                            {record.workoutPlan ? `${record.workoutPlan} 日` : '旧版记录'}
                                         </span>
                                     </div>
                                     <div className="bg-[#111] p-3 rounded border border-[#222]">
                                         <h4 className="text-[10px] text-gray-500 uppercase mb-2">训练内容</h4>
                                         <div className="space-y-1">
-                                            {getExercises(record.workoutPlan).map(ex => {
-                                                let completedText = null;
-                                                let maxWeight = null;
-                                                if (record.workoutSession && record.workoutSession[ex.id]) {
-                                                    const session = record.workoutSession[ex.id];
-                                                    const completedCount = session.filter(s => s.completed).length;
-                                                    if (completedCount === 0) return null;
-                                                    completedText = `${completedCount}组`;
-                                                    const weights = session.filter(s => s.completed).map(s => parseFloat(s.weight || '0'));
-                                                    if (weights.length > 0) maxWeight = Math.max(...weights);
-                                                } else if (record.workoutSession) return null;
+                                            {Object.entries(record.workoutSession || {}).map(([exerciseId, session]) => {
+                                                const completedCount = session.filter(s => s.completed).length;
+                                                if (completedCount === 0) return null;
+                                                const weights = session.filter(s => s.completed).map(s => parseFloat(s.weight || '0')).filter(Number.isFinite);
+                                                const maxWeight = weights.length > 0 ? Math.max(...weights) : null;
 
                                                 return (
-                                                    <div key={ex.id} className="text-sm text-gray-300 flex items-center justify-between gap-2 border-b border-[#222] pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
+                                                    <div key={exerciseId} className="text-sm text-gray-300 flex items-center justify-between gap-2 border-b border-[#222] pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
                                                         <div className="flex items-center gap-2">
                                                             <i className="fas fa-dumbbell text-[10px] text-accent"></i>
-                                                            <span>{ex.name}</span>
+                                                            <span>{exerciseNames[exerciseId] || exerciseId}</span>
                                                         </div>
                                                         <div className="text-xs font-mono text-gray-500">
-                                                            <span className="text-white font-bold">{completedText || '已打卡'}</span>
-                                                            {maxWeight && <span className="ml-2 pl-2 border-l border-[#333]">{maxWeight}kg</span>}
+                                                            <span className="text-white font-bold">{completedCount}组</span>
+                                                            {maxWeight !== null && <span className="ml-2 pl-2 border-l border-[#333]">{maxWeight}kg</span>}
                                                         </div>
                                                     </div>
                                                 );
