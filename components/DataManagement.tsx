@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { DB_KEY } from '../constants';
+import { clearConversations, exportConversations, replaceConversations } from '../services/aiConversationStore';
 
 interface DataManagementProps {
     onClose: () => void;
@@ -10,15 +11,21 @@ interface DataManagementProps {
 const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onError }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleExport = () => {
+    const handleExport = async () => {
         try {
-            const data = localStorage.getItem(DB_KEY);
-            if (!data) {
+            const localData = localStorage.getItem(DB_KEY);
+            if (!localData) {
                 onError('没有数据可导出');
                 return;
             }
 
-            const blob = new Blob([data], { type: 'application/json' });
+            const conversations = await exportConversations();
+            const backup = {
+                ...JSON.parse(localData),
+                aiConversations: conversations.conversations,
+                aiMessages: conversations.messages,
+            };
+            const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -28,7 +35,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
-            onSuccess('数据导出成功！');
+            onSuccess('数据导出成功，包含 AI 对话！');
         } catch (err) {
             onError('导出失败，请重试');
         }
@@ -43,7 +50,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             try {
                 const content = event.target?.result as string;
                 const data = JSON.parse(content);
@@ -54,7 +61,10 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
                 }
 
                 localStorage.setItem(DB_KEY, content);
-                onSuccess('数据导入成功！请刷新页面');
+                if (Array.isArray(data.aiConversations) || Array.isArray(data.aiMessages)) {
+                    await replaceConversations({ conversations: data.aiConversations || [], messages: data.aiMessages || [] });
+                }
+                onSuccess('数据导入成功，包含 AI 对话！请刷新页面');
                 setTimeout(() => window.location.reload(), 1500);
             } catch (err) {
                 onError('导入失败，文件格式不正确');
@@ -63,8 +73,9 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
         reader.readAsText(file);
     };
 
-    const handleClearData = () => {
-        if (window.confirm('确定要清除本机草稿、缓存和本地备份吗？Notion 正式记录不会被删除。')) {
+    const handleClearData = async () => {
+        if (window.confirm('确定要清除本机草稿、缓存、AI 对话和本地备份吗？Notion 正式记录不会被删除。')) {
+            await clearConversations();
             localStorage.removeItem(DB_KEY);
             onSuccess('数据已清除，页面即将刷新');
             setTimeout(() => window.location.reload(), 1500);
@@ -121,7 +132,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
                     <div className="mt-4 p-3 bg-accent/5 border border-accent/10 rounded-lg">
                         <p className="text-accent/80 text-xs leading-relaxed">
                             <i className="fas fa-info-circle mr-1"></i>
-                            导出文件是 localStorage 本地备份，包含训练草稿、缓存、体重数据；旧备份中的历史饮食数据会保留兼容，不会导出或修改 Notion 中的其他记录。
+                            导出文件是本地备份，包含训练草稿、缓存、体重数据和 AI 对话；旧备份中的历史饮食数据会保留兼容，不会导出或修改 Notion 中的其他记录。
                         </p>
                     </div>
                 </div>

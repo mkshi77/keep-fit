@@ -111,6 +111,29 @@ export interface FeedbackItem {
   color: string;
 }
 
+export type AIConversationType = 'daily-workout' | 'general';
+
+export interface AIConversation {
+  id: string;
+  title: string;
+  type: AIConversationType;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface AIStoredMessage {
+  id: string;
+  conversationId: string;
+  role: AIChatMessage['role'];
+  content: string;
+  createdAt: number;
+}
+
+export interface AIConversationSnapshot {
+  conversations: AIConversation[];
+  messages: AIStoredMessage[];
+}
+
 export interface AIChatMessage {
   role: 'user' | 'assistant';
   content: string;
