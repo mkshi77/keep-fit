@@ -13,6 +13,7 @@ import type { AIChatMessage, AIConversation, AIWorkoutContext } from '../types';
 
 interface AIChatProps {
   context: AIWorkoutContext;
+  reviewToken?: number;
 }
 
 const todayKey = () => {
@@ -20,7 +21,7 @@ const todayKey = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 };
 
-const AIChat: React.FC<AIChatProps> = ({ context }) => {
+const AIChat: React.FC<AIChatProps> = ({ context, reviewToken = 0 }) => {
   const [conversations, setConversations] = useState<AIConversation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
@@ -72,7 +73,7 @@ const AIChat: React.FC<AIChatProps> = ({ context }) => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reviewToken]);
 
   const persistMessages = async (conversationId: string, nextMessages: AIChatMessage[]) => {
     const current = conversations.find((conversation) => conversation.id === conversationId);

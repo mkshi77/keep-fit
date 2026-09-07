@@ -147,3 +147,17 @@ export interface AIWorkoutContext {
 
 
 
+
+export interface WorkoutReviewExercise {
+  exerciseId: string;
+  name: string;
+  sets: WorkoutSet[];
+  feedback: ExerciseFeedback;
+}
+
+export interface WorkoutReviewPayload {
+  date: string;
+  trainingDay: TrainingDay;
+  durationMinutes?: number;
+  exercises: WorkoutReviewExercise[];
+}

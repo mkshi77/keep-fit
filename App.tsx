@@ -11,6 +11,7 @@ import type {
   TodayWorkout,
   TrainingDay,
   WorkoutSet,
+  WorkoutReviewPayload,
 } from './types';
 import Header from './components/Header';
 import WeightChart from './components/WeightChart';
@@ -19,6 +20,7 @@ import WorkoutSection from './components/WorkoutSection';
 import WorkoutMode from './components/WorkoutMode';
 import TodaySummary from './components/TodaySummary';
 import AIChat from './components/AIChat';
+import TrainingSummary from './components/TrainingSummary';
 import Toast from './components/Toast';
 import FeedbackLayer from './components/FeedbackLayer';
 import ExerciseModal from './components/ExerciseModal';
@@ -99,6 +101,9 @@ const App: React.FC = () => {
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isWorkoutMode, setIsWorkoutMode] = useState(false);
+  const [workoutStartedAt, setWorkoutStartedAt] = useState<number | null>(null);
+  const [workoutSummary, setWorkoutSummary] = useState<WorkoutReviewPayload | null>(null);
+  const [reviewToken, setReviewToken] = useState(0);
 
   const showToast = useCallback((message: string, type: ToastState['type'] = 'info') => {
     setToast({ show: true, message, type });
@@ -182,6 +187,9 @@ const App: React.FC = () => {
   }, []);
 
   const handleSessionChange = (currentSession: Record<string, WorkoutSet[]>, exerciseId?: string, weight?: string) => {
+    if (Object.values(currentSession).some((sets) => sets.some((set) => set.completed))) {
+      setWorkoutStartedAt((previous) => previous ?? Date.now());
+    }
     setAppData((previous) => ({
       ...previous,
       currentSession,
@@ -195,7 +203,7 @@ const App: React.FC = () => {
 
   const checkFilledToday = () => Boolean(appData.history[dateKey()]);
 
-  const finishLocally = (weightValue: string, type: 'rest' | 'workout', syncedToNotion: boolean) => {
+  const finishLocally = (weightValue: string, type: 'rest' | 'workout', syncedToNotion: boolean, summary?: WorkoutReviewPayload) => {
     const currentDate = dateKey();
     const weightRecords = [...appData.weightRecords];
     if (weightValue) {
@@ -218,7 +226,12 @@ const App: React.FC = () => {
       currentFeedback: type === 'workout' ? {} : previous.currentFeedback,
     }));
     setModalData({ type });
-    setModal('celebration');
+    if (type === 'workout' && summary) {
+      setModal('none');
+      setWorkoutSummary(summary);
+    } else {
+      setModal('celebration');
+    }
   };
 
   const confirmFinishDay = async (weightValue: string, overrideIsRestDay?: boolean) => {
@@ -240,18 +253,25 @@ const App: React.FC = () => {
     }
     setIsSubmitting(true);
     try {
+      const submittedExercises = workout.exercises.map((exercise) => ({
+        exerciseId: exercise.exerciseId,
+        notionPageId: exercise.notionPageId as string,
+        name: exercise.name,
+        sets: appData.currentSession[exercise.exerciseId] || exercise.savedSets || Array.from({ length: 4 }, () => ({ weight: '', reps: '', completed: false })),
+        feedback: appData.currentFeedback[exercise.exerciseId] || exercise.savedFeedback || {},
+      }));
       await completeWorkout({
         date: workout.date,
         trainingDay: workout.trainingDay,
         submissionId: crypto.randomUUID(),
-        exercises: workout.exercises.map((exercise) => ({
-          exerciseId: exercise.exerciseId,
-          notionPageId: exercise.notionPageId as string,
-          sets: appData.currentSession[exercise.exerciseId] || exercise.savedSets || Array.from({ length: 4 }, () => ({ weight: '', reps: '', completed: false })),
-          feedback: appData.currentFeedback[exercise.exerciseId] || exercise.savedFeedback || {},
-        })),
+        exercises: submittedExercises,
       });
-      finishLocally(weightValue, 'workout', true);
+      finishLocally(weightValue, 'workout', true, {
+        date: workout.date,
+        trainingDay: workout.trainingDay,
+        durationMinutes: workoutStartedAt == null ? undefined : Math.max(1, Math.round((Date.now() - workoutStartedAt) / 60000)),
+        exercises: submittedExercises.map(({ exerciseId, name, sets, feedback }) => ({ exerciseId, name, sets, feedback })),
+      });
       showToast('训练已正式写入 Notion', 'success');
       void syncWorkout();
     } catch (error) {
@@ -343,7 +363,7 @@ const App: React.FC = () => {
         <TodaySummary
           workout={workout}
           isFilled={isFilled}
-          onStart={() => { if (workout?.isRecoveryDay) return; setIsWorkoutMode(true); }}
+          onStart={() => { if (workout?.isRecoveryDay) return; setWorkoutStartedAt((previous) => previous ?? Date.now()); setIsWorkoutMode(true); }}
         />
 
         <main id="today-workout" className="px-4 mt-6 pb-48 scroll-mt-4">
@@ -377,7 +397,7 @@ const App: React.FC = () => {
 
       <div className={activeTab === 'coach' ? 'block' : 'hidden'}>
         <main className="pb-28">
-          <AIChat context={{ workout, session: appData.currentSession, feedback: appData.currentFeedback }} />
+          <AIChat context={{ workout, session: appData.currentSession, feedback: appData.currentFeedback }} reviewToken={reviewToken} />
         </main>
       </div>
 
@@ -392,6 +412,15 @@ const App: React.FC = () => {
           onOpenExerciseModal={(exercise) => { setModalData(exercise); setModal('exercise'); }}
           onAskAI={() => { setIsWorkoutMode(false); setActiveTab('coach'); }}
           onExit={() => setIsWorkoutMode(false)}
+        />
+      )}
+
+      {workoutSummary && (
+        <TrainingSummary
+          summary={workoutSummary}
+          onClose={() => { setWorkoutSummary(null); setReviewToken((token) => token + 1); setActiveTab('today'); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          onOpenAIChat={() => { setWorkoutSummary(null); setReviewToken((token) => token + 1); setActiveTab('coach'); }}
+          onReviewSaved={() => setReviewToken((token) => token + 1)}
         />
       )}
 

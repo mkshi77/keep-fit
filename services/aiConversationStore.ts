@@ -195,3 +195,23 @@ export const replaceConversations = async (snapshot: AIConversationSnapshot) => 
     messages.forEach((message) => messageStore.put(message));
   });
 };
+
+export const saveDailyWorkoutReview = async (date: string, content: string) => {
+  const review = content.trim();
+  if (!review) return null;
+
+  const title = `今日训练 · ${date}`;
+  const conversations = await listConversations();
+  const existing = conversations.find((conversation) => conversation.type === 'daily-workout' && conversation.title === title);
+  const conversation = existing
+    ? { ...existing, updatedAt: Date.now() }
+    : { ...createConversation('daily-workout'), title };
+  const messages = await listMessages(conversation.id);
+  const nextMessages: AIChatMessage[] = [
+    ...messages.map((message) => ({ role: message.role, content: message.content })),
+    { role: "assistant", content: review },
+  ];
+
+  await saveConversation(conversation, nextMessages);
+  return conversation.id;
+};

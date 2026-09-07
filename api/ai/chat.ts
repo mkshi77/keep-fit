@@ -17,7 +17,7 @@ export const chatCompletionUrl = (baseUrl: string) => {
   return `${clean}/v1/chat/completions`;
 };
 
-const providerConfig = () => {
+export const providerConfig = () => {
   const provider = process.env.AI_PROVIDER?.toLowerCase() as Provider | undefined;
   if (!provider || !['deepseek', 'glm'].includes(provider)) return null;
   const prefix = provider === 'deepseek' ? 'DEEPSEEK' : 'GLM';
