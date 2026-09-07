@@ -1,16 +1,14 @@
-import { CheckCircle2, CalendarDays, TrendingUp, MessageCircle } from 'lucide-react';
-import React, { useCallback, useEffect, useState } from 'react';
-import { DB_KEY, FALLBACK_PLANS, FALLBACK_WEEKLY_SCHEDULE, FEEDBACK_TEXTS } from './constants';
+import { CalendarDays, TrendingUp, MessageCircle } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { DB_KEY, FALLBACK_PLANS, FALLBACK_WEEKLY_SCHEDULE } from './constants';
 import type {
   AppData,
   ExerciseFeedback,
   ExercisePlan,
-  FeedbackItem,
   HistoryRecord,
   ModalType,
   ToastState,
   TodayWorkout,
-  TrainingDay,
   WorkoutSet,
   WorkoutReviewPayload,
 } from './types';
@@ -23,10 +21,11 @@ import TodaySummary from './components/TodaySummary';
 import AIChat from './components/AIChat';
 import TrainingSummary from './components/TrainingSummary';
 import Toast from './components/Toast';
-import FeedbackLayer from './components/FeedbackLayer';
+import CoachInsight from './components/CoachInsight';
+import { completedContent, currentWorkoutSets, todayActionLabel, workoutProgress } from './services/workoutFlow';
 import ExerciseModal from './components/ExerciseModal';
 import DataManagement from './components/DataManagement';
-import { WeightModal, ActionSheet, HistoryModal, CelebrationLayer } from './components/Modals';
+import { WeightModal, HistoryModal, CelebrationLayer } from './components/Modals';
 import { completeWorkout, getTodayWorkout } from './services/workoutApi';
 import { checkSession } from './services/authApi';
 import AuthGate from './components/AuthGate';
@@ -68,6 +67,9 @@ export const loadLocalData = (raw: string | null): AppData => {
       history: migrateHistory(saved.history),
       lastLogin: todayLoginKey(),
       currentSession: sameDay ? (saved.currentSession || {}) : {},
+      workoutStartedAt: sameDay ? saved.workoutStartedAt : undefined,
+      currentExerciseId: sameDay ? saved.currentExerciseId : undefined,
+      submissionId: sameDay ? saved.submissionId : undefined,
       currentFeedback: sameDay ? (saved.currentFeedback || {}) : {},
       workoutCache: saved.workoutCache?.date === dateKey() ? saved.workoutCache : undefined,
     };
@@ -99,12 +101,12 @@ const App: React.FC = () => {
   const [modal, setModal] = useState<ModalType>('none');
   const [modalData, setModalData] = useState<Record<string, unknown> | ExercisePlan | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
-  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isWorkoutMode, setIsWorkoutMode] = useState(false);
-  const [workoutStartedAt, setWorkoutStartedAt] = useState<number | null>(null);
+  const submittingRef = useRef(false);
   const [workoutSummary, setWorkoutSummary] = useState<WorkoutReviewPayload | null>(null);
   const [reviewToken, setReviewToken] = useState(0);
+  const handleReviewSaved = useCallback(() => setReviewToken((token) => token + 1), []);
 
   const showToast = useCallback((message: string, type: ToastState['type'] = 'info') => {
     setToast({ show: true, message, type });
@@ -152,7 +154,10 @@ const App: React.FC = () => {
           return result;
         }, {});
         const currentFeedback = hasFeedbackDraft ? previous.currentFeedback : savedFeedback;
-        const allCompleted = latest.source === 'notion' && latest.exercises.length > 0 && latest.exercises.every((exercise) => exercise.completed);
+        const submittedId = latest.exercises[0]?.submissionId;
+        const allCompleted = latest.source === 'notion' && latest.exercises.length > 0
+          && (latest.exercises.every((exercise) => exercise.completed)
+            || Boolean(submittedId && latest.exercises.every((exercise) => exercise.submissionId === submittedId)));
         const history = { ...previous.history };
         if (allCompleted && !history[latest.date]) {
           history[latest.date] = {
@@ -180,29 +185,24 @@ const App: React.FC = () => {
     if (isLoaded && isAuthenticated) void syncWorkout();
   }, [isLoaded, isAuthenticated, syncWorkout]);
 
-  const triggerFeedback = useCallback((x: number, y: number, type: 'workout') => {
-    const texts = FEEDBACK_TEXTS[type];
-    const item = { id: Date.now(), x, y, text: texts[Math.floor(Math.random() * texts.length)], color: '#00ccff' };
-    setFeedbacks((previous) => [...previous, item]);
-    window.setTimeout(() => setFeedbacks((previous) => previous.filter((entry) => entry.id !== item.id)), 2500);
-  }, []);
-
   const handleSessionChange = (currentSession: Record<string, WorkoutSet[]>, exerciseId?: string, weight?: string) => {
-    if (Object.values(currentSession).some((sets) => sets.some((set) => set.completed))) {
-      setWorkoutStartedAt((previous) => previous ?? Date.now());
-    }
     setAppData((previous) => ({
       ...previous,
       currentSession,
+      workoutStartedAt: previous.workoutStartedAt ?? Date.now(),
+      submissionId: undefined,
       lastWeights: exerciseId && weight ? { ...previous.lastWeights, [exerciseId]: weight } : previous.lastWeights,
     }));
   };
 
   const handleFeedbackChange = (exerciseId: string, feedback: ExerciseFeedback) => {
-    setAppData((previous) => ({ ...previous, currentFeedback: { ...previous.currentFeedback, [exerciseId]: feedback } }));
+    setAppData((previous) => ({ ...previous, submissionId: undefined, currentFeedback: { ...previous.currentFeedback, [exerciseId]: feedback } }));
   };
 
-  const checkFilledToday = () => Boolean(appData.history[dateKey()]);
+  const checkFilledToday = () => {
+    const record = appData.history[workout?.date || dateKey()];
+    return record?.type === 'rest' || record?.syncedToNotion === true;
+  };
 
   const finishLocally = (weightValue: string, type: 'rest' | 'workout', syncedToNotion: boolean, summary?: WorkoutReviewPayload) => {
     const currentDate = dateKey();
@@ -215,7 +215,7 @@ const App: React.FC = () => {
     history[currentDate] = {
       type,
       workoutPlan: type === 'workout' ? workout?.trainingDay ?? null : null,
-      workoutSession: type === 'workout' ? appData.currentSession : undefined,
+      workoutSession: type === 'workout' ? Object.fromEntries((summary?.exercises ?? []).map((exercise) => [exercise.exerciseId, exercise.sets])) : undefined,
       workoutFeedback: type === 'workout' ? appData.currentFeedback : undefined,
       syncedToNotion,
     };
@@ -225,10 +225,14 @@ const App: React.FC = () => {
       weightRecords,
       currentSession: type === 'workout' ? {} : previous.currentSession,
       currentFeedback: type === 'workout' ? {} : previous.currentFeedback,
+      workoutStartedAt: undefined,
+      currentExerciseId: undefined,
+      submissionId: undefined,
     }));
     setModalData({ type });
     if (type === 'workout' && summary) {
       setModal('none');
+      setIsWorkoutMode(false);
       setWorkoutSummary(summary);
     } else {
       setModal('celebration');
@@ -236,11 +240,13 @@ const App: React.FC = () => {
   };
 
   const confirmFinishDay = async (weightValue: string, overrideIsRestDay?: boolean) => {
+    if (submittingRef.current || checkFilledToday()) return;
     const isRestDay = overrideIsRestDay ?? Boolean((modalData as { isRestDay?: boolean } | null)?.isRestDay);
     if (isRestDay) {
       finishLocally(weightValue, 'rest', false);
       return;
     }
+    if (!isWorkoutMode) return;
     if (!workout?.trainingDay || workout.exercises.length === 0) {
       setModal('none');
       showToast('今日训练计划不可用，草稿已保留', 'error');
@@ -252,25 +258,32 @@ const App: React.FC = () => {
       showToast('当前是容灾计划，无法正式写回 Notion；草稿已保留', 'error');
       return;
     }
+    if (workoutProgress(workout, appData.currentSession).completed === 0) {
+      showToast('完成至少一组训练后才能保存', 'error');
+      return;
+    }
+    submittingRef.current = true;
     setIsSubmitting(true);
     try {
       const submittedExercises = workout.exercises.map((exercise) => ({
         exerciseId: exercise.exerciseId,
         notionPageId: exercise.notionPageId as string,
         name: exercise.name,
-        sets: appData.currentSession[exercise.exerciseId] || exercise.savedSets || Array.from({ length: 4 }, () => ({ weight: '', reps: '', completed: false })),
+        sets: completedContent(currentWorkoutSets(exercise, appData.currentSession, appData.lastWeights)),
         feedback: appData.currentFeedback[exercise.exerciseId] || exercise.savedFeedback || {},
       }));
+      const submissionId = appData.submissionId || crypto.randomUUID();
+      setAppData((previous) => ({ ...previous, submissionId }));
       await completeWorkout({
         date: workout.date,
         trainingDay: workout.trainingDay,
-        submissionId: crypto.randomUUID(),
+        submissionId,
         exercises: submittedExercises,
       });
       finishLocally(weightValue, 'workout', true, {
         date: workout.date,
         trainingDay: workout.trainingDay,
-        durationMinutes: workoutStartedAt == null ? undefined : Math.max(1, Math.round((Date.now() - workoutStartedAt) / 60000)),
+        durationMinutes: appData.workoutStartedAt == null ? undefined : Math.max(1, Math.round((Date.now() - appData.workoutStartedAt) / 60000)),
         exercises: submittedExercises.map(({ exerciseId, name, sets, feedback }) => ({ exerciseId, name, sets, feedback })),
       });
       showToast('训练已正式写入 Notion', 'success');
@@ -279,39 +292,27 @@ const App: React.FC = () => {
       setModal('none');
       showToast(`${error instanceof Error ? error.message : '写回失败'}；本地草稿已保留，可重试`, 'error');
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
 
+  const startWorkout = (exerciseId?: string) => {
+    if (!workout || workout.isRecoveryDay || !workout.exercises.length || checkFilledToday()) return;
+    const firstUnfinished = workout.exercises.find((exercise) =>
+      (appData.currentSession[exercise.exerciseId] || []).filter((set) => set.completed).length < exercise.planSets);
+    setAppData((previous) => ({ ...previous, workoutStartedAt: previous.workoutStartedAt ?? Date.now(),
+      currentExerciseId: exerciseId || previous.currentExerciseId || firstUnfinished?.exerciseId || workout.exercises[0].exerciseId }));
+    setModal('none');
+    setIsWorkoutMode(true);
+  };
+
   const handleMainAction = () => {
-    if (checkFilledToday()) {
-      setModal('actionSheet');
-      return;
-    }
+    if (checkFilledToday()) return;
     if (workout?.isRecoveryDay) {
       setModalData({ isRestDay: true });
-      const lastRecord = appData.weightRecords.at(-1);
-      const shouldAskWeight = !lastRecord || Math.ceil((new Date(dateKey()).getTime() - new Date(lastRecord.date).getTime()) / 86_400_000) >= 3;
-      if (shouldAskWeight) setModal('weight');
-      else void confirmFinishDay('', true);
-      return;
-    }
-
-    const isWorkoutDone = workout?.exercises.some((exercise) => appData.currentSession[exercise.exerciseId]?.some((set) => set.completed)) ?? false;
-    if (!isWorkoutDone) {
-      showToast('完成至少一组训练后才能同步数据', 'error');
-      return;
-    }
-    const isRestDay = false;
-    let shouldAskWeight = true;
-    const lastRecord = appData.weightRecords.at(-1);
-    if (lastRecord) {
-      const elapsed = new Date(dateKey()).getTime() - new Date(lastRecord.date).getTime();
-      shouldAskWeight = Math.ceil(elapsed / 86_400_000) >= 3;
-    }
-    setModalData({ isRestDay });
-    if (shouldAskWeight) setModal('weight');
-    else void confirmFinishDay('', isRestDay);
+      setModal('weight');
+    } else startWorkout();
   };
 
   const manualAddWeight = (value: string) => {
@@ -330,21 +331,9 @@ const App: React.FC = () => {
     showToast('体重数据已校准', 'success');
   };
 
-  const undoCheckIn = () => {
-    const currentDate = dateKey();
-    if (appData.history[currentDate]?.syncedToNotion) {
-      setModal('none');
-      showToast('Notion 是正式记录，当前阶段不支持从 App 撤销已同步训练', 'info');
-      return;
-    }
-    const history = { ...appData.history };
-    delete history[currentDate];
-    setAppData((previous) => ({ ...previous, history }));
-    setModal('none');
-    showToast('本地打卡已撤销', 'info');
-  };
-
   const isFilled = checkFilledToday();
+  const progress = workoutProgress(workout, appData.currentSession);
+  const hasDraft = !isFilled && (appData.workoutStartedAt != null || Object.keys(appData.currentSession).length > 0);
   const modalType = (modalData as { type?: 'rest' | 'workout' } | null)?.type;
   const switchTab = (tab: 'today' | 'records' | 'coach') => {
     setActiveTab(tab);
@@ -357,36 +346,20 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen text-white bg-black font-sans selection:bg-accent selection:text-black flex flex-col">
-      <FeedbackLayer items={feedbacks} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className={activeTab === 'today' ? 'block' : 'hidden'}>
+      <div className={activeTab === 'today' ? 'mx-auto w-full max-w-[440px]' : 'hidden'}>
         <Header filledCount={Object.keys(appData.history).length} onOpenSettings={() => setModal('data')} />
-        <TodaySummary
-          workout={workout}
-          isFilled={isFilled}
-          onStart={() => { if (workout?.isRecoveryDay) return; setWorkoutStartedAt((previous) => previous ?? Date.now()); setIsWorkoutMode(true); }}
-        />
-
-        <main id="today-workout" className="px-4 mt-6 pb-48 scroll-mt-4">
-          <WorkoutSection
-            workout={workout}
-            isLoading={isWorkoutLoading}
-            lastWeights={appData.lastWeights}
-            sessionData={appData.currentSession}
-            feedbackData={appData.currentFeedback}
-            onSessionChange={handleSessionChange}
-            onFeedbackChange={handleFeedbackChange}
-            onFeedback={triggerFeedback}
+        <TodaySummary workout={workout} />
+        <main id="today-workout" className="px-4 mt-5 space-y-5 pb-[calc(100px+env(safe-area-inset-bottom))]">
+          <CoachInsight workout={workout} history={appData.history} hasDraft={hasDraft} />
+          <WorkoutSection workout={workout} isLoading={isWorkoutLoading}
             onOpenExerciseModal={(exercise) => { setModalData(exercise); setModal('exercise'); }}
-            onRetry={() => void syncWorkout()}
-          />
-        </main>
-
-        <div className="fixed bottom-[calc(72px+env(safe-area-inset-bottom))] left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent pt-4 pb-2 px-5 z-50 flex justify-center pointer-events-none">
-          <button onClick={handleMainAction} disabled={isSubmitting} className={`pointer-events-auto w-full max-w-[440px] h-[56px] font-black text-lg italic flex items-center justify-center transition-all active:scale-95 disabled:opacity-50 ${isFilled ? 'bg-[#111] text-accent border-2 border-accent' : 'bg-accent text-black'}`} style={{ clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)' }}>
-            {isSubmitting ? '正在写入 Notion...' : isFilled ? <><CheckCircle2 className="mr-2" />今日同步已完成</> : '完成打卡'}
+            onRetry={() => void syncWorkout()} />
+          <button onClick={handleMainAction} disabled={isFilled || !workout || (!workout.isRecoveryDay && !workout.exercises.length)}
+            className="h-14 w-full rounded-full bg-[#a4ff4f] text-base font-bold text-black disabled:bg-[#1a1a1a] disabled:text-gray-400">
+            {todayActionLabel(workout, isFilled, hasDraft, progress)}
           </button>
-        </div>
+        </main>
       </div>
 
       <div className={activeTab === 'records' ? 'block' : 'hidden'}>
@@ -413,6 +386,10 @@ const App: React.FC = () => {
           onOpenExerciseModal={(exercise) => { setModalData(exercise); setModal('exercise'); }}
           onAskAI={() => { setIsWorkoutMode(false); setActiveTab('coach'); }}
           onExit={() => setIsWorkoutMode(false)}
+          exerciseId={appData.currentExerciseId}
+          onExerciseChange={(currentExerciseId) => setAppData((previous) => ({ ...previous, currentExerciseId }))}
+          onFinish={() => void confirmFinishDay('', false)}
+          isSubmitting={isSubmitting}
         />
       )}
 
@@ -421,7 +398,7 @@ const App: React.FC = () => {
           summary={workoutSummary}
           onClose={() => { setWorkoutSummary(null); setReviewToken((token) => token + 1); setActiveTab('today'); window.scrollTo({ top: 0, behavior: "smooth" }); }}
           onOpenAIChat={() => { setWorkoutSummary(null); setReviewToken((token) => token + 1); setActiveTab('coach'); }}
-          onReviewSaved={() => setReviewToken((token) => token + 1)}
+          onReviewSaved={handleReviewSaved}
         />
       )}
 
@@ -443,9 +420,8 @@ const App: React.FC = () => {
       </nav>
 
       {modal === 'weight' && <WeightModal title={appData.weightRecords.length === 0 ? '初始体重' : '记录体重'} onConfirm={(value) => typeof (modalData as { isRestDay?: unknown } | null)?.isRestDay === 'boolean' ? void confirmFinishDay(value) : manualAddWeight(value)} onSkip={() => typeof (modalData as { isRestDay?: unknown } | null)?.isRestDay === 'boolean' ? void confirmFinishDay('') : setModal('none')} showSkip />}
-      {modal === 'actionSheet' && <ActionSheet onClose={() => setModal('none')} onUndo={undoCheckIn} />}
       {modal === 'history' && modalData && <HistoryModal date={String((modalData as { date: string }).date)} record={(modalData as { record?: HistoryRecord }).record} onClose={() => setModal('none')} />}
-      {modal === 'exercise' && modalData && <ExerciseModal exercise={modalData as ExercisePlan} onClose={() => setModal('none')} onStart={() => { setModal('none'); showToast('开始训练!', 'success'); }} />}
+      {modal === 'exercise' && modalData && <ExerciseModal exercise={modalData as ExercisePlan} onClose={() => setModal('none')} onStart={isFilled ? undefined : () => startWorkout((modalData as ExercisePlan).exerciseId)} />}
       {modal === 'data' && <DataManagement onClose={() => setModal('none')} onSuccess={(message) => showToast(message, 'success')} onError={(message) => showToast(message, 'error')} />}
       {modal === 'celebration' && <CelebrationLayer type={modalType || 'workout'} onFinish={() => { setModal('none'); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />}
     </div>

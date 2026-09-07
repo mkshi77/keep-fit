@@ -323,7 +323,7 @@ export const completionProperties = (sets: WorkoutSet[], feedback: ExerciseFeedb
   const officialSets = sets.slice(0, MAX_OFFICIAL_SETS);
   const properties: Record<string, unknown> = {};
   for (let index = 0; index < MAX_OFFICIAL_SETS; index += 1) {
-    const set = officialSets[index];
+    const set = officialSets[index]?.completed ? officialSets[index] : undefined;
     properties[`第${index + 1}组重量kg`] = { number: numericValue(set?.weight) };
     properties[`第${index + 1}组次数`] = { number: numericValue(set?.reps) };
   }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { requestWorkoutReview } from "../services/aiApi";
 import { saveDailyWorkoutReview } from "../services/aiConversationStore";
 import type { WorkoutReviewPayload } from "../types";
@@ -12,17 +12,19 @@ interface TrainingSummaryProps {
 
 const TrainingSummary: React.FC<TrainingSummaryProps> = ({ summary, onClose, onOpenAIChat, onReviewSaved }) => {
   const [review, setReview] = useState<{ status: "loading" | "ready" | "fallback"; content: string }>({ status: "loading", content: "" });
+  const pendingReview = useRef<{ summary: WorkoutReviewPayload; promise: Promise<string> } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    requestWorkoutReview(summary)
-      .then(async (content) => {
-        try {
-          await saveDailyWorkoutReview(summary.date, content);
-          if (!cancelled) onReviewSaved?.();
-        } catch {
-          if (!cancelled) onReviewSaved?.();
-        }
+    if (pendingReview.current?.summary !== summary) {
+      pendingReview.current = { summary, promise: requestWorkoutReview(summary).then(async (content) => {
+        await saveDailyWorkoutReview(summary.date, content).catch(() => null);
+        onReviewSaved?.();
+        return content;
+      }) };
+    }
+    pendingReview.current.promise
+      .then((content) => {
         if (!cancelled) setReview({ status: "ready", content });
       })
       .catch(() => {
@@ -37,46 +39,43 @@ const TrainingSummary: React.FC<TrainingSummaryProps> = ({ summary, onClose, onO
   }, [summary, onReviewSaved]);
 
   const completedSets = summary.exercises.reduce((total, exercise) => total + exercise.sets.filter((set) => set.completed).length, 0);
+  const plannedSets = summary.exercises.reduce((total, exercise) => total + exercise.sets.length, 0);
   const completedExercises = summary.exercises.filter((exercise) => exercise.sets.some((set) => set.completed));
 
   return (
     <div className="fixed inset-0 z-[200] bg-black overflow-y-auto">
       <div className="mx-auto flex min-h-full w-full max-w-[520px] flex-col px-5 pb-[calc(24px+env(safe-area-inset-bottom))] pt-[calc(20px+env(safe-area-inset-top))]">
         <div className="pt-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-accent/25 bg-accent/10 text-2xl">✅</div>
-          <h1 className="mt-5 text-3xl font-black italic tracking-wide text-white">训练已保存</h1>
-          <p className="mt-2 text-xs text-gray-500">Notion 正式记录已完成 · AI 复盘正在后台生成</p>
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-accent/25 bg-[#a4ff4f]/10 text-2xl">✅</div>
+          <h1 className="mt-5 text-3xl font-bold tracking-tight text-white">训练已保存</h1>
+          <p className="mt-2 text-xs text-gray-500">今天长了一点。</p>
         </div>
 
-        <div className="mt-7 grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-[#252525] bg-[#111] p-4">
-            <p className="text-[10px] font-bold tracking-widest text-gray-500">训练日</p>
-            <p className="mt-2 text-xl font-black text-white">{summary.trainingDay} 日</p>
+        <div className="mt-7 grid grid-cols-3 gap-3">
+          <div className="rounded-2xl bg-[#111] p-4">
+            <p className="text-xs text-gray-400">完成组数</p>
+            <p className="mt-2 text-2xl font-bold text-white">{completedSets}</p>
           </div>
-          <div className="rounded-2xl border border-[#252525] bg-[#111] p-4">
-            <p className="text-[10px] font-bold tracking-widest text-gray-500">时长</p>
-            <p className="mt-2 text-xl font-black text-white">{summary.durationMinutes == null ? "--" : `${summary.durationMinutes} 分钟`}</p>
+          <div className="rounded-2xl bg-[#111] p-4">
+            <p className="text-xs text-gray-400">时长 / 分钟</p>
+            <p className="mt-2 text-2xl font-bold text-white">{summary.durationMinutes ?? '--'}</p>
           </div>
-          <div className="rounded-2xl border border-[#252525] bg-[#111] p-4">
-            <p className="text-[10px] font-bold tracking-widest text-gray-500">完成动作</p>
-            <p className="mt-2 text-xl font-black text-white">{completedExercises.length}</p>
-          </div>
-          <div className="rounded-2xl border border-[#252525] bg-[#111] p-4">
-            <p className="text-[10px] font-bold tracking-widest text-gray-500">完成组数</p>
-            <p className="mt-2 text-xl font-black text-white">{completedSets}</p>
+          <div className="rounded-2xl bg-[#111] p-4">
+            <p className="text-xs text-gray-400">计划完成</p>
+            <p className="mt-2 text-2xl font-bold text-white">{plannedSets ? Math.round(completedSets / plannedSets * 100) : 0}%</p>
           </div>
         </div>
 
-        <section className="mt-5 rounded-2xl border border-[#252525] bg-[#111] p-4">
+        <section className="mt-5 rounded-2xl bg-[#111] p-4">
           <h2 className="text-[10px] font-bold tracking-widest text-gray-500">动作明细 · RIR / 不适</h2>
           <div className="mt-3 space-y-3">
             {completedExercises.map((exercise) => {
               const completed = exercise.sets.filter((set) => set.completed);
               return (
-                <div key={exercise.exerciseId} className="rounded-xl border border-[#222] bg-[#151515] p-3">
+                <div key={exercise.exerciseId} className="rounded-xl bg-[#151515] p-3">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-bold text-white">{exercise.name}</p>
-                    <span className="text-xs font-bold text-accent">{completed.length} 组</span>
+                    <span className="text-xs font-bold text-[#a4ff4f]">{completed.length} 组</span>
                   </div>
                   <p className="mt-2 font-mono text-xs text-gray-300">
                     {completed.map((set) => [set.weight || "-", set.reps || "-"].join("kg × ")).join(" / ")} reps
@@ -90,7 +89,7 @@ const TrainingSummary: React.FC<TrainingSummaryProps> = ({ summary, onClose, onO
           </div>
         </section>
 
-        <section className="mt-4 rounded-2xl border border-[#252525] bg-[#111] p-4">
+        <section className="mt-4 rounded-2xl bg-[#111] p-4">
           <div className="flex items-center justify-between">
             <h2 className="text-[10px] font-bold tracking-widest text-gray-500">AI 复盘</h2>
             {review.status === "fallback" && <span className="text-[10px] text-orange-400">离线鼓励</span>}
@@ -100,7 +99,7 @@ const TrainingSummary: React.FC<TrainingSummaryProps> = ({ summary, onClose, onO
         </section>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
-          <button onClick={onOpenAIChat} className="h-12 rounded-xl border border-accent bg-accent text-sm font-black text-black active:scale-95">查看 AI 对话</button>
+          <button onClick={onOpenAIChat} className="h-12 rounded-xl border border-accent bg-[#a4ff4f] text-sm font-black text-black active:scale-95">查看 AI 对话</button>
           <button onClick={onClose} className="h-12 rounded-xl border border-[#333] bg-[#151515] text-sm font-bold text-gray-300 active:scale-95">返回今日</button>
         </div>
       </div>
