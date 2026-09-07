@@ -213,7 +213,7 @@ const AIChat: React.FC<AIChatProps> = ({ context, reviewToken = 0 }) => {
           <div className="flex items-center gap-2">
             <div className="text-right">
               <div className="px-3 py-1 rounded-full border border-accent/20 bg-accent/5 text-accent text-[10px] font-bold">{context.workout?.isRecoveryDay ? '恢复' : '训练'}</div>
-              <p className="text-gray-700 text-[9px] mt-1">不修改 Notion 与未来计划</p>
+              <p className="text-gray-700 text-[9px] mt-1">写入需确认</p>
             </div>
             <button onClick={() => setIsConversationOpen(true)} aria-label="对话列表" className="w-9 h-9 rounded-xl bg-[#1a1a1a] border border-[#262626] text-gray-400">
               <i className="fas fa-layer-group text-sm" />
@@ -226,8 +226,8 @@ const AIChat: React.FC<AIChatProps> = ({ context, reviewToken = 0 }) => {
         {messages.length === 0 && (
           <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center px-8">
             <div className="w-16 h-16 rounded-2xl bg-accent/5 border border-accent/15 flex items-center justify-center mb-5"><i className="fas fa-shield-halved text-accent text-2xl" /></div>
-            <h2 className="text-white font-black italic text-lg">你的只读训练副驾</h2>
-            <p className="text-gray-600 text-xs leading-relaxed mt-2">可以根据今日计划和当前已输入的组数据回答动作、重量、次数、RIR 与恢复问题。</p>
+            <h2 className="text-white font-black italic text-lg">你的训练副驾</h2>
+            <p className="text-gray-600 text-xs leading-relaxed mt-2">可以回答今日训练和历史表现问题，帮助你决定重量和 RIR。</p>
             <div className="grid grid-cols-2 gap-2 mt-6 w-full max-w-[340px]">
               {['今天的训练重点？', '第 4 组该不该做？', '帮我检查当前组数', '这个动作哪里容易错？'].map((question) => (
                 <button key={question} onClick={() => setInput(question)} className="rounded-xl bg-[#151515] border border-[#252525] p-3 text-left text-[10px] leading-relaxed text-gray-400 hover:border-accent/30 hover:text-white">{question}</button>

@@ -2,6 +2,7 @@ import type { AIChatMessage, AIWorkoutContext } from '../../types.js';
 import { authFailure } from '../../server/auth.js';
 import { clientRateLimitKey, consumeRateLimit } from '../../server/rate-limit.js';
 import { isAllowedBrowserOrigin, type ApiRequest, type ApiResponse } from '../../server/http.js';
+import { getAIHistoryContext } from '../../server/workoutHistory.js';
 
 type Provider = 'deepseek' | 'glm';
 
@@ -48,7 +49,8 @@ const systemPrompt = (context?: AIWorkoutContext) => `你是 Keep Fit 的训练�
 如遇明显伤痛或高风险症状，建议停止动作并寻求合格医疗或训练专业人士帮助。
 
 今日上下文（只读）：
-${JSON.stringify(context ?? {}, null, 2).slice(0, 12000)}`;
+${JSON.stringify(context ?? {}, null, 2).slice(0, 12000)}
+${history ? "\n历史训练数据（只读，供参考）：\n" + history : ""}`;
 
 export default async function handler(request: ApiRequest, response: ApiResponse) {
   response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
