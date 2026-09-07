@@ -1,4 +1,6 @@
 import type { AIChatMessage, AIWorkoutContext } from '../../types.js';
+import { authFailure } from '../../server/auth.js';
+import { clientRateLimitKey, consumeRateLimit } from '../../server/rate-limit.js';
 import { isAllowedBrowserOrigin, type ApiRequest, type ApiResponse } from '../../server/http.js';
 
 type Provider = 'deepseek' | 'glm';
@@ -51,6 +53,14 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     return response.status(405).json({ error: 'Method not allowed' });
   }
   if (!isAllowedBrowserOrigin(request)) return response.status(403).json({ error: '不允许的请求来源' });
+  const failure = authFailure(request);
+  if (failure) return response.status(failure.status).json(failure);
+
+  const rate = consumeRateLimit(clientRateLimitKey(request.headers));
+  if (!rate.allowed) {
+    response.setHeader('Retry-After', String(rate.retryAfterSeconds));
+    return response.status(429).json({ error: 'AI 请求过于频繁，请稍后再试' });
+  }
 
   const config = providerConfig();
   if (!config) return response.status(503).json({ error: 'AI 尚未配置' });
@@ -90,3 +100,5 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     return response.status(502).json({ error: 'AI 服务连接失败' });
   }
 }
+
+

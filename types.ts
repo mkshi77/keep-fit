@@ -39,6 +39,7 @@ export interface ExerciseFeedback {
 }
 
 export interface TodayExercise extends ExercisePlan {
+  submissionId?: string;
   completed?: boolean;
   savedSets?: WorkoutSet[];
   savedFeedback?: ExerciseFeedback;
@@ -73,6 +74,8 @@ export interface AppData {
   workoutCache?: TodayWorkout;
 }
 
+export type WorkoutCompletionStatus = 'completed' | 'partial' | 'skipped';
+
 export interface WorkoutCompletionExercise {
   exerciseId: string;
   notionPageId: string;
@@ -81,6 +84,7 @@ export interface WorkoutCompletionExercise {
 }
 
 export interface WorkoutCompletionPayload {
+  submissionId?: string;
   date: string;
   trainingDay: TrainingDay;
   exercises: WorkoutCompletionExercise[];
@@ -117,3 +121,6 @@ export interface AIWorkoutContext {
   session: Record<string, WorkoutSet[]>;
   feedback: Record<string, ExerciseFeedback>;
 }
+
+
+

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FALLBACK_PLANS } from '../constants';
+import { createSessionCookie } from '../server/auth';
 import type { NotionPage, NotionProperty } from '../server/notion';
 import { completionProperties, getFallbackWorkout, joinWorkoutPages, validateCompletionPayload } from '../server/workout';
 import { chatCompletionUrl } from '../api/ai/chat';
@@ -148,22 +149,28 @@ describe('provider and PWA boundaries', () => {
 
   it('returns a fallback response when NOTION_TOKEN is absent', async () => {
     const previous = process.env.NOTION_TOKEN;
+    const previousPassword = process.env.APP_ACCESS_PASSWORD;
     delete process.env.NOTION_TOKEN;
+    process.env.APP_ACCESS_PASSWORD = 'test-password';
     const { response, state } = mockResponse();
-    await todayHandler({ method: 'GET', headers: {} }, response);
+    await todayHandler({ method: 'GET', headers: { cookie: createSessionCookie('test-password') } }, response);
     expect(state.status).toBe(200);
     expect(state.body).toMatchObject({ source: 'fallback' });
     expect(state.headers['Cache-Control']).toContain('no-store');
     if (previous) process.env.NOTION_TOKEN = previous;
+    if (previousPassword) process.env.APP_ACCESS_PASSWORD = previousPassword; else delete process.env.APP_ACCESS_PASSWORD;
   });
 
   it('fails closed without AI configuration while leaving the app route recoverable', async () => {
     const previous = process.env.AI_PROVIDER;
+    const previousPassword = process.env.APP_ACCESS_PASSWORD;
     delete process.env.AI_PROVIDER;
+    process.env.APP_ACCESS_PASSWORD = 'test-password';
     const { response, state } = mockResponse();
-    await aiHandler({ method: 'POST', headers: {}, body: { messages: [{ role: 'user', content: '今天练什么？' }] } }, response);
+    await aiHandler({ method: 'POST', headers: { cookie: createSessionCookie('test-password') }, body: { messages: [{ role: 'user', content: '\u4eca\u5929\u7ec3\u4ec0\u4e48\uff1f' }] } }, response);
     expect(state.status).toBe(503);
-    expect(state.body).toEqual({ error: 'AI 尚未配置' });
+    expect(state.body).toEqual({ error: 'AI \u5c1a\u672a\u914d\u7f6e' });
     if (previous) process.env.AI_PROVIDER = previous;
+    if (previousPassword) process.env.APP_ACCESS_PASSWORD = previousPassword; else delete process.env.APP_ACCESS_PASSWORD;
   });
 });

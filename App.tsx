@@ -24,6 +24,8 @@ import ExerciseModal from './components/ExerciseModal';
 import DataManagement from './components/DataManagement';
 import { WeightModal, ActionSheet, HistoryModal, CelebrationLayer } from './components/Modals';
 import { completeWorkout, getTodayWorkout } from './services/workoutApi';
+import { checkSession } from './services/authApi';
+import AuthGate from './components/AuthGate';
 
 const dateKey = () => {
   const now = new Date();
@@ -97,6 +99,7 @@ const App: React.FC = () => {
   const [modalData, setModalData] = useState<Record<string, unknown> | ExercisePlan | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
   const showToast = useCallback((message: string, type: ToastState['type'] = 'info') => {
     setToast({ show: true, message, type });
@@ -117,6 +120,14 @@ const App: React.FC = () => {
   useEffect(() => {
     if (isLoaded) localStorage.setItem(DB_KEY, JSON.stringify(appData));
   }, [appData, isLoaded]);
+
+  useEffect(() => {
+    let cancelled = false;
+    checkSession()
+      .then(() => { if (!cancelled) setIsAuthenticated(true); })
+      .catch(() => { if (!cancelled) setIsAuthenticated(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const syncWorkout = useCallback(async () => {
     setIsWorkoutLoading(true);
@@ -162,8 +173,8 @@ const App: React.FC = () => {
   }, [showToast]);
 
   useEffect(() => {
-    if (isLoaded) void syncWorkout();
-  }, [isLoaded, syncWorkout]);
+    if (isLoaded && isAuthenticated) void syncWorkout();
+  }, [isLoaded, isAuthenticated, syncWorkout]);
 
   const triggerFeedback = useCallback((x: number, y: number, type: 'diet' | 'workout') => {
     const texts = FEEDBACK_TEXTS[type];
@@ -235,6 +246,7 @@ const App: React.FC = () => {
       await completeWorkout({
         date: workout.date,
         trainingDay: workout.trainingDay,
+        submissionId: crypto.randomUUID(),
         exercises: workout.exercises.map((exercise) => ({
           exerciseId: exercise.exerciseId,
           notionPageId: exercise.notionPageId as string,
@@ -258,13 +270,21 @@ const App: React.FC = () => {
       setModal('actionSheet');
       return;
     }
-    const dietDone = appData.currentDiet.some((item) => item.checked);
-    const isWorkoutDone = workout?.exercises.some((exercise) => appData.currentSession[exercise.exerciseId]?.some((set) => set.completed)) ?? false;
-    if (!dietDone && !isWorkoutDone) {
-      showToast('完成一项饮食或训练才能同步数据', 'error');
+    if (workout?.isRecoveryDay) {
+      setModalData({ isRestDay: true });
+      const lastRecord = appData.weightRecords.at(-1);
+      const shouldAskWeight = !lastRecord || Math.ceil((new Date(dateKey()).getTime() - new Date(lastRecord.date).getTime()) / 86_400_000) >= 3;
+      if (shouldAskWeight) setModal('weight');
+      else void confirmFinishDay('', true);
       return;
     }
-    const isRestDay = dietDone && !isWorkoutDone;
+
+    const isWorkoutDone = workout?.exercises.some((exercise) => appData.currentSession[exercise.exerciseId]?.some((set) => set.completed)) ?? false;
+    if (!isWorkoutDone) {
+      showToast('完成至少一组训练后才能同步数据', 'error');
+      return;
+    }
+    const isRestDay = false;
     let shouldAskWeight = true;
     const lastRecord = appData.weightRecords.at(-1);
     if (lastRecord) {
@@ -312,6 +332,10 @@ const App: React.FC = () => {
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  if (isAuthenticated !== true) {
+    return <AuthGate onAuthenticated={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className="min-h-screen text-white bg-black font-sans selection:bg-accent selection:text-black flex flex-col">

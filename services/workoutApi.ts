@@ -1,9 +1,17 @@
-import type { TodayWorkout, WorkoutCompletionPayload } from '../types';
+import type { TodayWorkout, WorkoutCompletionPayload, WorkoutCompletionStatus } from '../types';
 
 const parseError = async (response: Response, fallback: string) => {
   const data = await response.json().catch(() => null) as { error?: string } | null;
   return data?.error || fallback;
 };
+
+export interface CompleteWorkoutResult {
+  success: true;
+  updated: number;
+  submissionId?: string | null;
+  workoutCompleted?: boolean;
+  exercises?: Array<{ exerciseId: string; notionPageId: string; status: WorkoutCompletionStatus }>;
+}
 
 export const getTodayWorkout = async (): Promise<TodayWorkout> => {
   const response = await fetch('/api/workout/today', {
@@ -23,5 +31,5 @@ export const completeWorkout = async (payload: WorkoutCompletionPayload) => {
     body: JSON.stringify(payload),
   });
   if (!response.ok) throw new Error(await parseError(response, '训练写回失败，请重试'));
-  return response.json() as Promise<{ success: true; updated: number }>;
+  return response.json() as Promise<CompleteWorkoutResult>;
 };
