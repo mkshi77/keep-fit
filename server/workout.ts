@@ -5,6 +5,7 @@ import {
   TodayWorkout,
   TrainingDay,
   WorkoutCompletionPayload,
+  WorkoutCompletionStatus,
   WorkoutSet,
 } from '../types.js';
 import {
@@ -42,6 +43,7 @@ const PROPERTY = {
   planStatus: ['计划状态', '训练状态', '执行状态', '状态', 'Plan Status'],
   retired: ['旧计划停用'],
   completed: ['完成', 'Completed'],
+  submissionId: ['提交ID', 'Submission ID', 'submission_id'],
   rir: ['末组RIR', 'RIR'],
   asymmetry: ['左右差异', 'Asymmetry'],
   discomfort: ['不适0-10', '不适', 'Discomfort'],
@@ -254,6 +256,7 @@ export const joinWorkoutPages = (
       video: safeVideo(exerciseId, videoCandidate),
       cover: firstString(libraryPage.properties, [...PROPERTY.cover]) || undefined,
       completed: firstBoolean(trainingPage.properties, [...PROPERTY.completed]) ?? false,
+      submissionId: firstString(trainingPage.properties, [...PROPERTY.submissionId]) || undefined,
       ...(hasSavedValues(savedSets, savedFeedback) ? { savedSets, savedFeedback } : {}),
     }];
   });
@@ -330,14 +333,30 @@ export const completionProperties = (sets: WorkoutSet[], feedback: ExerciseFeedb
   return properties;
 };
 
+export const exerciseCompletionStatus = (sets: WorkoutSet[], planSets: number): WorkoutCompletionStatus => {
+  const officialSetCount = Math.min(Math.max(planSets, 1), MAX_OFFICIAL_SETS);
+  const completedCount = sets
+    .slice(0, officialSetCount)
+    .filter((set) => set.completed)
+    .length;
+  if (completedCount === 0) return 'skipped';
+  return completedCount >= officialSetCount ? 'completed' : 'partial';
+};
+
 export const validateCompletionPayload = (body: unknown): WorkoutCompletionPayload => {
   if (!body || typeof body !== 'object') throw new Error('请求体不能为空');
   const candidate = body as Partial<WorkoutCompletionPayload>;
   if (!candidate.date || !/^\d{4}-\d{2}-\d{2}$/.test(candidate.date)) throw new Error('日期格式无效');
   if (!candidate.trainingDay || !isTrainingDay(candidate.trainingDay)) throw new Error('训练日必须是 A、B 或 C');
+  if (candidate.submissionId != null && (typeof candidate.submissionId !== 'string' || candidate.submissionId.length > 100)) {
+    throw new Error('提交 ID 无效');
+  }
   if (!Array.isArray(candidate.exercises) || candidate.exercises.length === 0) throw new Error('至少提交一个动作');
+  const seenPages = new Set<string>();
   candidate.exercises.forEach((exercise) => {
     if (!exercise.exerciseId || !exercise.notionPageId || !Array.isArray(exercise.sets) || !exercise.feedback || typeof exercise.feedback !== 'object') throw new Error('动作提交数据不完整');
+    if (seenPages.has(exercise.notionPageId)) throw new Error('动作提交数据重复');
+    seenPages.add(exercise.notionPageId);
     exercise.sets.forEach((set) => {
       if (!set || typeof set !== 'object' || typeof set.weight !== 'string' || typeof set.reps !== 'string' || typeof set.completed !== 'boolean') throw new Error('组数据格式无效');
       numericValue(set.weight);
@@ -366,20 +385,46 @@ export const completeWorkoutInNotion = async (payload: WorkoutCompletionPayload)
     '末组RIR', '左右差异', '不适0-10', '完成',
   ]);
 
-  const allowed = new Map(today.exercises.map((exercise) => [exercise.notionPageId, exercise.exerciseId]));
+  const todayByPage = new Map(today.exercises.map((exercise) => [exercise.notionPageId, exercise]));
+  const statuses: Array<{ exerciseId: string; notionPageId: string; status: WorkoutCompletionStatus }> = [];
   for (const exercise of payload.exercises) {
-    if (allowed.get(exercise.notionPageId) !== exercise.exerciseId) {
+    const planned = todayByPage.get(exercise.notionPageId);
+    if (planned?.exerciseId !== exercise.exerciseId) {
       throw new Error(`动作 ${exercise.exerciseId} 不属于今日有效计划`);
     }
+    if (payload.submissionId && planned.submissionId === payload.submissionId) continue;
+    statuses.push({
+      exerciseId: exercise.exerciseId,
+      notionPageId: exercise.notionPageId,
+      status: exerciseCompletionStatus(exercise.sets, planned.planSets),
+    });
   }
 
-  await Promise.all(payload.exercises.map((exercise) => {
-    return updatePageProperties(exercise.notionPageId, token, completionProperties(exercise.sets, exercise.feedback));
+  // 先写训练数据；任一动作失败时不会标记任何动作完成，因此可以直接重试。
+  await Promise.all(statuses.map((status) => {
+    const exercise = payload.exercises.find((item) => item.notionPageId === status.notionPageId)!;
+    return updatePageProperties(status.notionPageId, token, completionProperties(exercise.sets, exercise.feedback));
   }));
 
-  // 所有组数据都成功后，再把各行标记为正式完成。
-  await Promise.all(payload.exercises.map((exercise) =>
-    updatePageProperties(exercise.notionPageId, token, { 完成: { checkbox: true } })));
+  // 再写完成标记。partial / skipped 明确保持未完成，避免单组完成被放大成整日完成。
+  const submissionProperty = findSchemaProperty(schema.properties, [...PROPERTY.submissionId]);
+  await Promise.all(statuses.map((status) => {
+    const properties: Record<string, unknown> = { 完成: { checkbox: status.status === 'completed' } };
+    if (submissionProperty && payload.submissionId && submissionProperty[1].type === 'rich_text') {
+      properties[submissionProperty[0]] = { rich_text: [{ text: { content: payload.submissionId } }] };
+    }
+    return updatePageProperties(status.notionPageId, token, properties);
+  }));
 
-  return { success: true, updated: payload.exercises.length };
+  const workoutCompleted = statuses.length > 0
+    && statuses.every((status) => status.status === 'completed')
+    && statuses.length === today.exercises.length;
+  return {
+    success: true,
+    updated: statuses.length,
+    submissionId: payload.submissionId ?? null,
+    workoutCompleted,
+    exercises: statuses,
+  };
 };
+

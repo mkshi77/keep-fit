@@ -187,3 +187,12 @@ export const findSchemaProperty = (
   }
   return undefined;
 };
+
+export const createPage = (
+  dataSourceId: string,
+  token: string,
+  properties: Record<string, unknown>,
+) => notionRequest<NotionPage>('/pages', token, {
+  method: 'POST',
+  body: JSON.stringify({ parent: { data_source_id: dataSourceId }, properties }),
+});

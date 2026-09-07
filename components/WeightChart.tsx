@@ -1,3 +1,4 @@
+import { Plus } from 'lucide-react';
 import React from 'react';
 import { WeightRecord } from '../types';
 
@@ -48,7 +49,6 @@ const WeightChart: React.FC<WeightChartProps> = ({ records, onAddWeight }) => {
                 strokeWidth="2" 
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
-                className="drop-shadow-[0_0_4px_rgba(204,255,0,1)]"
             />
             {circles}
         </svg>
@@ -66,7 +66,7 @@ const WeightChart: React.FC<WeightChartProps> = ({ records, onAddWeight }) => {
                 className="w-5 h-5 rounded bg-[#222] text-accent flex items-center justify-center text-[10px] hover:bg-accent hover:text-black transition-colors"
                 aria-label="Add Weight Manually"
             >
-                <i className="fas fa-plus"></i>
+                <Plus />
             </button>
         </div>
       </div>

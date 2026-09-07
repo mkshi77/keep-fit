@@ -1,5 +1,8 @@
 import type { AIChatMessage, AIWorkoutContext } from '../../types.js';
+import { authFailure } from '../../server/auth.js';
+import { clientRateLimitKey, consumeRateLimit } from '../../server/rate-limit.js';
 import { isAllowedBrowserOrigin, type ApiRequest, type ApiResponse } from '../../server/http.js';
+import { getAIHistoryContext } from '../../server/workoutHistory.js';
 
 type Provider = 'deepseek' | 'glm';
 
@@ -15,7 +18,7 @@ export const chatCompletionUrl = (baseUrl: string) => {
   return `${clean}/v1/chat/completions`;
 };
 
-const providerConfig = () => {
+export const providerConfig = () => {
   const provider = process.env.AI_PROVIDER?.toLowerCase() as Provider | undefined;
   if (!provider || !['deepseek', 'glm'].includes(provider)) return null;
   const prefix = provider === 'deepseek' ? 'DEEPSEEK' : 'GLM';
@@ -38,11 +41,16 @@ const validMessages = (messages: unknown): messages is AIChatMessage[] =>
 
 const systemPrompt = (context?: AIWorkoutContext) => `你是 Keep Fit 的训练问答助手。
 你可以回答训练问题，并参考“今日训练”和用户当前已输入的组数据。
-你不能调用 Notion，不能修改未来训练计划，不能删除记录，也不能声称已执行任何写操作。
+你可以根据用户反馈提出一个训练反馈写入提案。当用户提到疼痛、不适、疲劳、左右差异、重量问题、器械问题、恢复问题或技术问题时，你可以在回复末尾用以下格式提出一个写入提案（不要声称已写入，只在用户确认后才执行）：
+\`\`\`action
+{"action":"record_training_feedback","type":"pain_discomfort|fatigue|asymmetry|technical_issue|weight_issue|equipment_issue|recovery_issue|other","severity":0-10,"bodyPart":"右膝","exerciseId":"leg_press","exerciseName":"腿举","raw":"用户原话","summary":"简短结构化总结","updateTodayExercise":true}
+\`\`\`
+每条回复最多一个提案。如果用户没有明确表达反馈，不要生成提案。不能修改未来训练计划，不能删除记录，不能声称已执行任何写操作。
 如遇明显伤痛或高风险症状，建议停止动作并寻求合格医疗或训练专业人士帮助。
 
 今日上下文（只读）：
-${JSON.stringify(context ?? {}, null, 2).slice(0, 12000)}`;
+${JSON.stringify(context ?? {}, null, 2).slice(0, 12000)}
+${history ? "\n历史训练数据（只读，供参考）：\n" + history : ""}`;
 
 export default async function handler(request: ApiRequest, response: ApiResponse) {
   response.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -51,6 +59,14 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     return response.status(405).json({ error: 'Method not allowed' });
   }
   if (!isAllowedBrowserOrigin(request)) return response.status(403).json({ error: '不允许的请求来源' });
+  const failure = authFailure(request);
+  if (failure) return response.status(failure.status).json(failure);
+
+  const rate = consumeRateLimit(clientRateLimitKey(request.headers));
+  if (!rate.allowed) {
+    response.setHeader('Retry-After', String(rate.retryAfterSeconds));
+    return response.status(429).json({ error: 'AI 请求过于频繁，请稍后再试' });
+  }
 
   const config = providerConfig();
   if (!config) return response.status(503).json({ error: 'AI 尚未配置' });
@@ -90,3 +106,5 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     return response.status(502).json({ error: 'AI 服务连接失败' });
   }
 }
+
+

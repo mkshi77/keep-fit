@@ -4,8 +4,8 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  // Base path (relative for broad compatibility: Vercel & GH Pages)
-  base: './',
+  // Base path for the Vercel deployment root.
+  base: '/',
   build: {
     outDir: 'dist',
   }

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'keep-fit-v2-phase1-20260907-nav';
+const CACHE_NAME = 'keep-fit-v4-icon-refresh';
 const APP_SHELL = ['/', '/index.html', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -45,4 +45,17 @@ self.addEventListener('fetch', (event) => {
     if (canCache(request, response)) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
     return response;
   })));
+});
+
+// ── Web Push ────────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || 'Keep Fit';
+  const body = data.body || '该训练了！';
+  event.waitUntil(self.registration.showNotification(title, { body, icon: '/icon-192.png', badge: '/icon-192.png' }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(self.clients.openWindow('/'));
 });

@@ -1,4 +1,5 @@
 import { completeWorkoutInNotion, dateInTimeZone, validateCompletionPayload } from '../../server/workout.js';
+import { authFailure } from '../../server/auth.js';
 import { isAllowedBrowserOrigin, type ApiRequest, type ApiResponse } from '../../server/http.js';
 
 export default async function handler(request: ApiRequest, response: ApiResponse) {
@@ -8,6 +9,8 @@ export default async function handler(request: ApiRequest, response: ApiResponse
     return response.status(405).json({ error: 'Method not allowed' });
   }
   if (!isAllowedBrowserOrigin(request)) return response.status(403).json({ error: '不允许的请求来源' });
+  const failure = authFailure(request);
+  if (failure) return response.status(failure.status).json(failure);
 
   try {
     const payload = validateCompletionPayload(request.body);

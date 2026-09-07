@@ -1,6 +1,6 @@
 export type TrainingDay = 'A' | 'B' | 'C';
 
-export interface DietItem {
+export interface LegacyDietItem {
   id: number;
   time: string;
   text: string;
@@ -21,6 +21,7 @@ export interface ExercisePlan {
   planReps: string;
   planWeight?: string;
   baseline?: string;
+  restSeconds?: number;
   youtube?: string;
   video?: string;
   cover?: string;
@@ -39,6 +40,7 @@ export interface ExerciseFeedback {
 }
 
 export interface TodayExercise extends ExercisePlan {
+  submissionId?: string;
   completed?: boolean;
   savedSets?: WorkoutSet[];
   savedFeedback?: ExerciseFeedback;
@@ -55,7 +57,7 @@ export interface TodayWorkout {
 
 export interface HistoryRecord {
   type: 'workout' | 'rest';
-  diet: DietItem[];
+  diet?: LegacyDietItem[];
   workoutPlan: TrainingDay | null;
   workoutSession?: Record<string, WorkoutSet[]>;
   workoutFeedback?: Record<string, ExerciseFeedback>;
@@ -67,11 +69,12 @@ export interface AppData {
   history: Record<string, HistoryRecord>;
   weightRecords: WeightRecord[];
   lastWeights: Record<string, string>;
-  currentDiet: DietItem[];
   currentSession: Record<string, WorkoutSet[]>;
   currentFeedback: Record<string, ExerciseFeedback>;
   workoutCache?: TodayWorkout;
 }
+
+export type WorkoutCompletionStatus = 'completed' | 'partial' | 'skipped';
 
 export interface WorkoutCompletionExercise {
   exerciseId: string;
@@ -81,6 +84,7 @@ export interface WorkoutCompletionExercise {
 }
 
 export interface WorkoutCompletionPayload {
+  submissionId?: string;
   date: string;
   trainingDay: TrainingDay;
   exercises: WorkoutCompletionExercise[];
@@ -107,6 +111,29 @@ export interface FeedbackItem {
   color: string;
 }
 
+export type AIConversationType = 'daily-workout' | 'general';
+
+export interface AIConversation {
+  id: string;
+  title: string;
+  type: AIConversationType;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface AIStoredMessage {
+  id: string;
+  conversationId: string;
+  role: AIChatMessage['role'];
+  content: string;
+  createdAt: number;
+}
+
+export interface AIConversationSnapshot {
+  conversations: AIConversation[];
+  messages: AIStoredMessage[];
+}
+
 export interface AIChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -116,4 +143,55 @@ export interface AIWorkoutContext {
   workout: TodayWorkout | null;
   session: Record<string, WorkoutSet[]>;
   feedback: Record<string, ExerciseFeedback>;
+}
+
+
+
+
+export interface WorkoutReviewExercise {
+  exerciseId: string;
+  name: string;
+  sets: WorkoutSet[];
+  feedback: ExerciseFeedback;
+}
+
+export interface WorkoutReviewPayload {
+  date: string;
+  trainingDay: TrainingDay;
+  durationMinutes?: number;
+  exercises: WorkoutReviewExercise[];
+}
+
+export type TrainingFeedbackType =
+  | 'technical_issue'
+  | 'pain_discomfort'
+  | 'fatigue'
+  | 'asymmetry'
+  | 'weight_issue'
+  | 'equipment_issue'
+  | 'recovery_issue'
+  | 'other';
+
+export interface TrainingFeedbackPayload {
+  date: string;
+  exerciseId?: string;
+  exerciseName?: string;
+  type: TrainingFeedbackType;
+  severity?: number;
+  bodyPart?: string;
+  raw: string;
+  summary?: string;
+  updateTodayExercise?: boolean;
+}
+
+export interface AIActionProposal {
+  action: 'record_training_feedback';
+  type: TrainingFeedbackType;
+  severity?: number;
+  bodyPart?: string;
+  exerciseId?: string;
+  exerciseName?: string;
+  raw: string;
+  summary?: string;
+  updateTodayExercise?: boolean;
 }
