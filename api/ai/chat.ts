@@ -39,7 +39,7 @@ const validMessages = (messages: unknown): messages is AIChatMessage[] =>
     && typeof (message as AIChatMessage).content === 'string'
     && (message as AIChatMessage).content.length <= 4000);
 
-const systemPrompt = (context?: AIWorkoutContext) => `你是 Keep Fit 的训练问答助手。
+const systemPrompt = (context?: AIWorkoutContext, history = '') => `你是 Keep Fit 的训练问答助手。
 你可以回答训练问题，并参考“今日训练”和用户当前已输入的组数据。
 你可以根据用户反馈提出一个训练反馈写入提案。当用户提到疼痛、不适、疲劳、左右差异、重量问题、器械问题、恢复问题或技术问题时，你可以在回复末尾用以下格式提出一个写入提案（不要声称已写入，只在用户确认后才执行）：
 \`\`\`action
@@ -75,6 +75,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
   if (!validMessages(body.messages)) return response.status(400).json({ error: '消息格式无效' });
 
   try {
+    const history = await getAIHistoryContext();
     const upstream = await fetch(chatCompletionUrl(config.baseUrl), {
       method: 'POST',
       headers: {
@@ -85,7 +86,7 @@ export default async function handler(request: ApiRequest, response: ApiResponse
         model: config.model,
         temperature: 0.3,
         messages: [
-          { role: 'system', content: systemPrompt(body.context) },
+          { role: 'system', content: systemPrompt(body.context, history) },
           ...body.messages,
         ],
       }),
