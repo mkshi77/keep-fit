@@ -16,6 +16,7 @@ import Header from './components/Header';
 import WeightChart from './components/WeightChart';
 import StatsOverview from './components/StatsOverview';
 import WorkoutSection from './components/WorkoutSection';
+import WorkoutMode from './components/WorkoutMode';
 import TodaySummary from './components/TodaySummary';
 import AIChat from './components/AIChat';
 import Toast from './components/Toast';
@@ -97,6 +98,7 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isWorkoutMode, setIsWorkoutMode] = useState(false);
 
   const showToast = useCallback((message: string, type: ToastState['type'] = 'info') => {
     setToast({ show: true, message, type });
@@ -341,7 +343,7 @@ const App: React.FC = () => {
         <TodaySummary
           workout={workout}
           isFilled={isFilled}
-          onStart={() => document.getElementById('today-workout')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+          onStart={() => { if (workout?.isRecoveryDay) return; setIsWorkoutMode(true); }}
         />
 
         <main id="today-workout" className="px-4 mt-6 pb-48 scroll-mt-4">
@@ -378,6 +380,20 @@ const App: React.FC = () => {
           <AIChat context={{ workout, session: appData.currentSession, feedback: appData.currentFeedback }} />
         </main>
       </div>
+
+      {isWorkoutMode && (
+        <WorkoutMode
+          workout={workout}
+          lastWeights={appData.lastWeights}
+          sessionData={appData.currentSession}
+          feedbackData={appData.currentFeedback}
+          onSessionChange={handleSessionChange}
+          onFeedbackChange={handleFeedbackChange}
+          onOpenExerciseModal={(exercise) => { setModalData(exercise); setModal('exercise'); }}
+          onAskAI={() => { setIsWorkoutMode(false); setActiveTab('coach'); }}
+          onExit={() => setIsWorkoutMode(false)}
+        />
+      )}
 
       <nav className="fixed bottom-0 left-0 right-0 z-[80] border-t border-[#252525] bg-black/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]" aria-label="主导航">
         <div className="max-w-[440px] mx-auto h-[70px] grid grid-cols-3 px-4 gap-2">

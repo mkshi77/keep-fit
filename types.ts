@@ -21,6 +21,7 @@ export interface ExercisePlan {
   planReps: string;
   planWeight?: string;
   baseline?: string;
+  restSeconds?: number;
   youtube?: string;
   video?: string;
   cover?: string;
