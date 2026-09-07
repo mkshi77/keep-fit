@@ -16,6 +16,7 @@ import Header from './components/Header';
 import WeightChart from './components/WeightChart';
 import StatsOverview from './components/StatsOverview';
 import WorkoutSection from './components/WorkoutSection';
+import TodaySummary from './components/TodaySummary';
 import AIChat from './components/AIChat';
 import Toast from './components/Toast';
 import FeedbackLayer from './components/FeedbackLayer';
@@ -90,7 +91,7 @@ const App: React.FC = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isWorkoutLoading, setIsWorkoutLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'training' | 'ai'>('training');
+  const [activeTab, setActiveTab] = useState<'today' | 'records' | 'coach'>('today');
   const [modal, setModal] = useState<ModalType>('none');
   const [modalData, setModalData] = useState<Record<string, unknown> | ExercisePlan | null>(null);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -322,7 +323,7 @@ const App: React.FC = () => {
 
   const isFilled = checkFilledToday();
   const modalType = (modalData as { type?: 'rest' | 'workout' } | null)?.type;
-  const switchTab = (tab: 'training' | 'ai') => {
+  const switchTab = (tab: 'today' | 'records' | 'coach') => {
     setActiveTab(tab);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -335,12 +336,15 @@ const App: React.FC = () => {
     <div className="min-h-screen text-white bg-black font-sans selection:bg-accent selection:text-black flex flex-col">
       <FeedbackLayer items={feedbacks} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className={activeTab === 'training' ? 'block' : 'hidden'}>
+      <div className={activeTab === 'today' ? 'block' : 'hidden'}>
         <Header filledCount={Object.keys(appData.history).length} onOpenSettings={() => setModal('data')} />
-        <WeightChart records={appData.weightRecords} onAddWeight={() => { setModalData(null); setModal('weight'); }} />
-        <StatsOverview history={appData.history} onDateClick={(date, record) => { setModalData({ date, record }); setModal('history'); }} />
+        <TodaySummary
+          workout={workout}
+          isFilled={isFilled}
+          onStart={() => document.getElementById('today-workout')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+        />
 
-        <main className="px-4 mt-6 pb-48">
+        <main id="today-workout" className="px-4 mt-6 pb-48 scroll-mt-4">
           <WorkoutSection
             workout={workout}
             isLoading={isWorkoutLoading}
@@ -356,25 +360,38 @@ const App: React.FC = () => {
         </main>
 
         <div className="fixed bottom-[calc(72px+env(safe-area-inset-bottom))] left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent pt-4 pb-2 px-5 z-50 flex justify-center pointer-events-none">
-          <button onClick={handleMainAction} disabled={isSubmitting} className={`pointer-events-auto w-full max-w-[440px] h-[56px] font-black text-lg italic flex items-center justify-center transition-all active:scale-95 disabled:opacity-50 ${isFilled ? 'bg-[#111] text-accent border-2 border-accent' : 'bg-accent text-black shadow-[0_0_25px_rgba(204,255,0,0.4)]'}`} style={{ clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)' }}>
+          <button onClick={handleMainAction} disabled={isSubmitting} className={`pointer-events-auto w-full max-w-[440px] h-[56px] font-black text-lg italic flex items-center justify-center transition-all active:scale-95 disabled:opacity-50 ${isFilled ? 'bg-[#111] text-accent border-2 border-accent' : 'bg-accent text-black'}`} style={{ clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)' }}>
             {isSubmitting ? '正在写入 Notion...' : isFilled ? <><i className="fas fa-check-circle mr-2" />今日同步已完成</> : '完成打卡'}
           </button>
         </div>
       </div>
 
-      <div className={activeTab === 'ai' ? 'block' : 'hidden'}>
-        <AIChat context={{ workout, session: appData.currentSession, feedback: appData.currentFeedback }} />
+      <div className={activeTab === 'records' ? 'block' : 'hidden'}>
+        <main className="pb-28">
+          <WeightChart records={appData.weightRecords} onAddWeight={() => { setModalData(null); setModal('weight'); }} />
+          <StatsOverview history={appData.history} onDateClick={(date, record) => { setModalData({ date, record }); setModal('history'); }} />
+        </main>
+      </div>
+
+      <div className={activeTab === 'coach' ? 'block' : 'hidden'}>
+        <main className="pb-28">
+          <AIChat context={{ workout, session: appData.currentSession, feedback: appData.currentFeedback }} />
+        </main>
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-[80] border-t border-[#252525] bg-black/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]" aria-label="主导航">
-        <div className="max-w-[440px] mx-auto h-[70px] grid grid-cols-2 px-4 gap-2">
-          <button onClick={() => switchTab('training')} aria-current={activeTab === 'training' ? 'page' : undefined} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-black transition-colors ${activeTab === 'training' ? 'text-accent' : 'text-gray-600'}`}>
-            <i className="fas fa-dumbbell text-lg" />
-            <span>训练</span>
+        <div className="max-w-[440px] mx-auto h-[70px] grid grid-cols-3 px-4 gap-2">
+          <button onClick={() => switchTab('today')} aria-current={activeTab === 'today' ? 'page' : undefined} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-black transition-colors ${activeTab === 'today' ? 'text-accent' : 'text-gray-600'}`}>
+            <i className="fas fa-calendar-day text-lg" />
+            <span>今日</span>
           </button>
-          <button onClick={() => switchTab('ai')} aria-current={activeTab === 'ai' ? 'page' : undefined} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-black transition-colors ${activeTab === 'ai' ? 'text-accent' : 'text-gray-600'}`}>
+          <button onClick={() => switchTab('records')} aria-current={activeTab === 'records' ? 'page' : undefined} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-black transition-colors ${activeTab === 'records' ? 'text-accent' : 'text-gray-600'}`}>
+            <i className="fas fa-chart-line text-lg" />
+            <span>记录</span>
+          </button>
+          <button onClick={() => switchTab('coach')} aria-current={activeTab === 'coach' ? 'page' : undefined} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-black transition-colors ${activeTab === 'coach' ? 'text-accent' : 'text-gray-600'}`}>
             <i className="fas fa-comment-dots text-lg" />
-            <span>AI 教练</span>
+            <span>教练</span>
           </button>
         </div>
       </nav>

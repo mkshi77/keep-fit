@@ -48,7 +48,6 @@ const WeightChart: React.FC<WeightChartProps> = ({ records, onAddWeight }) => {
                 strokeWidth="2" 
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
-                className="drop-shadow-[0_0_4px_rgba(204,255,0,1)]"
             />
             {circles}
         </svg>

@@ -98,7 +98,7 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({ history, onDateClick }) =
     <div className="px-4 space-y-4 mb-4">
       
       {/* Heatmap Card */}
-      <div className="bg-[#111] rounded-2xl p-5 border border-[#222] shadow-xl">
+      <div className="bg-[#111] rounded-2xl p-5 border border-[#222]">
         <div className="flex justify-between items-center mb-4">
             <h3 className="text-gray-400 font-mono text-xs tracking-widest uppercase">
                 坚持热力图 (HISTORY)

@@ -17,7 +17,7 @@ const Header: React.FC<HeaderProps> = ({ filledCount, onOpenSettings }) => {
     <header className="px-5 pt-12 pb-2 bg-black">
       {/* Title Row */}
       <div className="mb-2 flex justify-between items-center">
-        <h1 className="text-3xl font-black italic text-white tracking-wider transform -skew-x-6">
+        <h1 className="text-lg font-black text-white tracking-tight">
           细狗,长了么<span className="text-accent">?</span>
         </h1>
         <button
@@ -32,15 +32,15 @@ const Header: React.FC<HeaderProps> = ({ filledCount, onOpenSettings }) => {
       <div className="flex justify-between items-end mb-2">
         <div className="flex flex-col justify-end">
           <div className="text-[10px] text-gray-600 font-mono font-bold leading-none mb-0.5 uppercase tracking-widest">{weekDay}</div>
-          <div className="text-xl font-black italic text-accent font-mono leading-none tracking-tight">
+          <div className="text-sm font-bold text-white font-mono leading-none tracking-tight">
             {month}<span className="text-gray-500">/</span>{day}
           </div>
         </div>
 
         <div className="text-right">
           <div className="text-[10px] text-gray-500 font-mono mb-0.5 uppercase tracking-widest leading-none">Streak</div>
-          <div className="text-4xl font-black text-white font-mono leading-none flex items-baseline justify-end gap-1">
-            <span className="text-accent drop-shadow-[0_0_15px_rgba(204,255,0,0.15)]">
+          <div className="text-2xl font-black text-white font-mono leading-none flex items-baseline justify-end gap-1">
+            <span className="text-accent">
               {filledCount.toString().padStart(3, '0')}
             </span>
           </div>

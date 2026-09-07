@@ -108,6 +108,7 @@ const WorkoutSection: React.FC<WorkoutSectionProps> = ({
   onOpenExerciseModal,
   onRetry,
 }) => {
+  const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const exercises = workout?.exercises ?? [];
 
   const currentSets = (exercise: ExercisePlan) => sessionData[exercise.exerciseId] || makeSets(exercise);
@@ -159,46 +160,74 @@ const WorkoutSection: React.FC<WorkoutSectionProps> = ({
           {exercises.map((exercise) => {
             const sets = currentSets(exercise);
             const feedback = feedbackData[exercise.exerciseId] || {};
+            const isExpanded = expandedExerciseId === exercise.exerciseId;
+            const completedCount = sets.filter((set) => set.completed).length;
+
             return (
-              <div key={exercise.exerciseId} className="bg-card rounded-2xl overflow-hidden border border-[#222] shadow-xl">
-                <div className="w-full h-[160px] bg-black flex items-center justify-center relative cursor-pointer" onClick={() => onOpenExerciseModal(exercise)}>
-                  {exercise.video ? <PreviewVideo src={exercise.video} /> : <ExerciseCover exercise={exercise} />}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
-                  <div className="absolute bottom-3 left-4 right-4 flex justify-between items-end pointer-events-none">
-                    <div>
-                      <div className="flex items-center gap-2"><h3 className="font-black text-white text-lg tracking-wide italic">{exercise.name}</h3><i className="fas fa-circle-info text-accent/60 text-xs" /></div>
-                      <p className="text-gray-400 text-[10px] font-mono mt-1">计划 {exercise.planWeight || '--'} · {exercise.planSets} × {exercise.planReps}</p>
-                      <p className="text-gray-600 text-[10px] font-mono">基线 {exercise.baseline || lastWeights[exercise.exerciseId] || '--'}</p>
-                    </div>
+              <div key={exercise.exerciseId} className="bg-card rounded-2xl overflow-hidden border border-[#222]">
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg">
+                    <ExerciseCover exercise={exercise} />
                   </div>
-                  {exercise.youtube && <a href={exercise.youtube} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="absolute top-3 right-3 px-3 py-2 rounded-lg bg-red-600/90 text-white text-[10px] font-bold"><i className="fab fa-youtube mr-1" />中文教学</a>}
+                  <button type="button" onClick={() => setExpandedExerciseId(isExpanded ? null : exercise.exerciseId)} className="min-w-0 flex-1 text-left">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="truncate font-bold text-white">{exercise.name}</h3>
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${completedCount > 0 ? 'bg-accent text-black' : 'bg-[#1a1a1a] text-gray-500'}`}>{completedCount}/{sets.length}</span>
+                    </div>
+                    <p className="mt-1 truncate text-xs text-gray-500">{exercise.planWeight || '--'} · {exercise.planSets} × {exercise.planReps}</p>
+                  </button>
+                  {exercise.youtube && (
+                    <a href={exercise.youtube} target="_blank" rel="noreferrer" aria-label={`${exercise.name} 中文教学`} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:text-white">
+                      <i className="fas fa-play-circle text-sm" />
+                    </a>
+                  )}
+                  <button type="button" onClick={() => setExpandedExerciseId(isExpanded ? null : exercise.exerciseId)} aria-label={isExpanded ? '收起动作' : '展开动作'} className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a1a1a] text-gray-500">
+                    <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'} text-xs`} />
+                  </button>
                 </div>
 
-                <div className="px-4 py-4">
-                  <div className="space-y-2.5">
-                    {sets.map((set, index) => (
-                      <div key={index}>
-                        {index === 3 && <div className="mb-2 rounded-lg border border-accent/10 bg-accent/5 p-2 text-[9px] leading-relaxed text-accent/70">第3组后 RIR ≥ 2、动作稳定、不适 &lt; 3/10、左右差异没有恶化 → 才继续第4组</div>}
-                        <div className="flex items-center gap-2 justify-between">
-                          <span className="text-[10px] text-gray-700 w-3 font-mono font-bold">{index + 1}</span>
-                          <div className="flex-1 h-10 rounded-lg flex items-center px-3 bg-[#181818] border border-[#2a2a2a]"><input type="number" inputMode="decimal" className="bg-transparent text-white text-right w-full outline-none font-mono text-base font-bold" placeholder="-" value={set.weight} onChange={(event) => updateSet(exercise, index, 'weight', event.target.value)} disabled={set.completed} /><span className="text-[10px] text-gray-600 ml-1.5 font-bold">KG</span></div>
-                          <span className="text-gray-800 text-xs">×</span>
-                          <div className="flex-1 h-10 rounded-lg flex items-center px-3 bg-[#181818] border border-[#2a2a2a]"><input type="number" inputMode="numeric" className="bg-transparent text-white text-center w-full outline-none font-mono text-base font-bold" placeholder="10" value={set.reps} onChange={(event) => updateSet(exercise, index, 'reps', event.target.value)} disabled={set.completed} /><span className="text-[10px] text-gray-600 ml-1 font-bold">REPS</span></div>
-                          <button onClick={(event) => { updateSet(exercise, index, 'completed', !set.completed); if (!set.completed) onFeedback(event.clientX - 60, event.clientY - 40, 'workout'); }} className={`w-11 h-10 rounded-lg flex items-center justify-center transition-all ${set.completed ? 'bg-accent text-black shadow-[0_0_10px_rgba(204,255,0,0.3)]' : 'bg-[#222] text-gray-700 border border-[#333]'}`}><i className="fas fa-check" /></button>
-                          {index >= DEFAULT_SETS && !set.completed && <button onClick={() => removeSet(exercise, index)} aria-label="删除额外组" className="text-red-900 px-1"><i className="fas fa-times" /></button>}
+                {isExpanded && (
+                  <>
+                    <div className="relative w-full h-[160px] bg-black flex items-center justify-center" onClick={() => onOpenExerciseModal(exercise)}>
+                      {exercise.video ? <PreviewVideo src={exercise.video} /> : <ExerciseCover exercise={exercise} />}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
+                      <div className="absolute bottom-3 left-4 right-4 flex justify-between items-end pointer-events-none">
+                        <div>
+                          <div className="flex items-center gap-2"><h3 className="font-black text-white text-lg tracking-wide italic">{exercise.name}</h3><i className="fas fa-circle-info text-accent/60 text-xs" /></div>
+                          <p className="text-gray-400 text-[10px] font-mono mt-1">计划 {exercise.planWeight || '--'} · {exercise.planSets} × {exercise.planReps}</p>
+                          <p className="text-gray-600 text-[10px] font-mono">基线 {exercise.baseline || lastWeights[exercise.exerciseId] || '--'}</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      {exercise.youtube && <a href={exercise.youtube} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="absolute top-3 right-3 px-3 py-2 rounded-lg bg-red-600/90 text-white text-[10px] font-bold"><i className="fab fa-youtube mr-1" />中文教学</a>}
+                    </div>
 
-                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-[#222]">
-                    <ScoreInput label="末组 RIR" value={feedback.rir} min={0} max={10} onChange={(rir) => onFeedbackChange(exercise.exerciseId, { ...feedback, rir })} />
-                    <ScoreInput label="左右差异 0–3" value={feedback.asymmetry} min={0} max={3} onChange={(asymmetry) => onFeedbackChange(exercise.exerciseId, { ...feedback, asymmetry: asymmetry as ExerciseFeedback['asymmetry'] })} />
-                    <ScoreInput label="不适 0–10" value={feedback.discomfort} min={0} max={10} onChange={(discomfort) => onFeedbackChange(exercise.exerciseId, { ...feedback, discomfort })} />
-                  </div>
+                    <div className="px-4 py-4">
+                      <div className="space-y-2.5">
+                        {sets.map((set, index) => (
+                          <div key={index}>
+                            {index === 3 && <div className="mb-2 rounded-lg border border-accent/10 bg-accent/5 p-2 text-[9px] leading-relaxed text-accent/70">第3组后 RIR ≥ 2、动作稳定、不适 &lt; 3/10、左右差异没有恶化 → 才继续第4组</div>}
+                            <div className="flex items-center gap-2 justify-between">
+                              <span className="text-[10px] text-gray-700 w-3 font-mono font-bold">{index + 1}</span>
+                              <div className="flex-1 h-10 rounded-lg flex items-center px-3 bg-[#181818] border border-[#2a2a2a]"><input type="number" inputMode="decimal" className="bg-transparent text-white text-right w-full outline-none font-mono text-base font-bold" placeholder="-" value={set.weight} onChange={(event) => updateSet(exercise, index, 'weight', event.target.value)} disabled={set.completed} /><span className="text-[10px] text-gray-600 ml-1.5 font-bold">KG</span></div>
+                              <span className="text-gray-800 text-xs">×</span>
+                              <div className="flex-1 h-10 rounded-lg flex items-center px-3 bg-[#181818] border border-[#2a2a2a]"><input type="number" inputMode="numeric" className="bg-transparent text-white text-center w-full outline-none font-mono text-base font-bold" placeholder="10" value={set.reps} onChange={(event) => updateSet(exercise, index, 'reps', event.target.value)} disabled={set.completed} /><span className="text-[10px] text-gray-600 ml-1 font-bold">REPS</span></div>
+                              <button onClick={(event) => { updateSet(exercise, index, 'completed', !set.completed); if (!set.completed) onFeedback(event.clientX - 60, event.clientY - 40, 'workout'); }} className={`w-11 h-10 rounded-lg flex items-center justify-center transition-all ${set.completed ? 'bg-accent text-black' : 'bg-[#222] text-gray-700 border border-[#333]'}`}><i className="fas fa-check" /></button>
+                              {index >= DEFAULT_SETS && !set.completed && <button onClick={() => removeSet(exercise, index)} aria-label="删除额外组" className="text-red-900 px-1"><i className="fas fa-times" /></button>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
 
-                  <button onClick={() => addSet(exercise)} className="w-full mt-4 py-2 text-[10px] text-gray-600 border border-dashed border-[#333] rounded-lg font-bold tracking-widest uppercase hover:text-gray-400">+ ADD SET</button>
-                </div>
+                      <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-[#222]">
+                        <ScoreInput label="末组 RIR" value={feedback.rir} min={0} max={10} onChange={(rir) => onFeedbackChange(exercise.exerciseId, { ...feedback, rir })} />
+                        <ScoreInput label="左右差异 0–3" value={feedback.asymmetry} min={0} max={3} onChange={(asymmetry) => onFeedbackChange(exercise.exerciseId, { ...feedback, asymmetry: asymmetry as ExerciseFeedback['asymmetry'] })} />
+                        <ScoreInput label="不适 0–10" value={feedback.discomfort} min={0} max={10} onChange={(discomfort) => onFeedbackChange(exercise.exerciseId, { ...feedback, discomfort })} />
+                      </div>
+
+                      <button onClick={() => addSet(exercise)} className="w-full mt-4 py-2 text-[10px] text-gray-600 border border-dashed border-[#333] rounded-lg font-bold tracking-widest uppercase hover:text-gray-400">+ ADD SET</button>
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}
