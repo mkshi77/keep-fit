@@ -60,18 +60,24 @@ export const loadLocalData = (raw: string | null): AppData => {
   try {
     const saved = JSON.parse(raw) as Partial<AppData> & Record<string, unknown>;
     delete saved.currentDiet;
-    const sameDay = saved.lastLogin === todayLoginKey();
+    const legacySameDay = saved.lastLogin === todayLoginKey();
+    const hasCanonicalDraft = typeof saved.draftDate === 'string'
+      && /^\d{4}-\d{2}-\d{2}$/.test(saved.draftDate);
+    const keepDraft = hasCanonicalDraft || legacySameDay;
+    const keepCachedWorkout = saved.workoutCache
+      && (saved.workoutCache.date === saved.draftDate || saved.workoutCache.date === dateKey());
     return {
       ...INITIAL_DATA,
       ...saved,
       history: migrateHistory(saved.history),
       lastLogin: todayLoginKey(),
-      currentSession: sameDay ? (saved.currentSession || {}) : {},
-      workoutStartedAt: sameDay ? saved.workoutStartedAt : undefined,
-      currentExerciseId: sameDay ? saved.currentExerciseId : undefined,
-      submissionId: sameDay ? saved.submissionId : undefined,
-      currentFeedback: sameDay ? (saved.currentFeedback || {}) : {},
-      workoutCache: saved.workoutCache?.date === dateKey() ? saved.workoutCache : undefined,
+      currentSession: keepDraft ? (saved.currentSession || {}) : {},
+      workoutStartedAt: keepDraft ? saved.workoutStartedAt : undefined,
+      currentExerciseId: keepDraft ? saved.currentExerciseId : undefined,
+      submissionId: keepDraft ? saved.submissionId : undefined,
+      currentFeedback: keepDraft ? (saved.currentFeedback || {}) : {},
+      draftDate: keepDraft ? saved.draftDate : undefined,
+      workoutCache: keepCachedWorkout ? saved.workoutCache : undefined,
     };
   } catch {
     return { ...INITIAL_DATA, lastLogin: todayLoginKey() };
@@ -143,17 +149,19 @@ const App: React.FC = () => {
       setWorkout(latest);
       setAppData((previous) => {
         const hasDraft = Object.values(previous.currentSession).some((sets) => sets.some((set) => set.weight || set.reps || set.completed));
+        const hasFeedbackDraft = Object.values(previous.currentFeedback).some((item) => Object.values(item).some((value) => value != null));
+        const draftMatchesBusinessDate = previous.draftDate === latest.date
+          || (!previous.draftDate && previous.workoutCache?.date === latest.date && (hasDraft || hasFeedbackDraft));
         const savedSession = latest.exercises.reduce<Record<string, WorkoutSet[]>>((result, exercise) => {
           if (exercise.savedSets) result[exercise.exerciseId] = exercise.savedSets;
           return result;
         }, {});
-        const currentSession = hasDraft ? previous.currentSession : savedSession;
-        const hasFeedbackDraft = Object.values(previous.currentFeedback).some((item) => Object.values(item).some((value) => value != null));
+        const currentSession = draftMatchesBusinessDate && hasDraft ? previous.currentSession : savedSession;
         const savedFeedback = latest.exercises.reduce<Record<string, ExerciseFeedback>>((result, exercise) => {
           if (exercise.savedFeedback) result[exercise.exerciseId] = exercise.savedFeedback;
           return result;
         }, {});
-        const currentFeedback = hasFeedbackDraft ? previous.currentFeedback : savedFeedback;
+        const currentFeedback = draftMatchesBusinessDate && hasFeedbackDraft ? previous.currentFeedback : savedFeedback;
         const submittedId = latest.exercises[0]?.submissionId;
         const allCompleted = latest.source === 'notion' && latest.exercises.length > 0
           && (latest.exercises.every((exercise) => exercise.completed)
@@ -168,7 +176,17 @@ const App: React.FC = () => {
             syncedToNotion: true,
           };
         }
-        return { ...previous, workoutCache: latest, currentSession, currentFeedback, history };
+        return {
+          ...previous,
+          workoutCache: latest,
+          currentSession,
+          currentFeedback,
+          history,
+          draftDate: draftMatchesBusinessDate && (hasDraft || hasFeedbackDraft) ? latest.date : undefined,
+          workoutStartedAt: draftMatchesBusinessDate ? previous.workoutStartedAt : undefined,
+          currentExerciseId: draftMatchesBusinessDate ? previous.currentExerciseId : undefined,
+          submissionId: draftMatchesBusinessDate ? previous.submissionId : undefined,
+        };
       });
       if (latest.warning) showToast(latest.warning, 'info');
     } catch (error) {
@@ -189,6 +207,7 @@ const App: React.FC = () => {
     setAppData((previous) => ({
       ...previous,
       currentSession,
+      draftDate: workout?.date || dateKey(),
       workoutStartedAt: previous.workoutStartedAt ?? Date.now(),
       submissionId: undefined,
       lastWeights: exerciseId && weight ? { ...previous.lastWeights, [exerciseId]: weight } : previous.lastWeights,
@@ -196,7 +215,12 @@ const App: React.FC = () => {
   };
 
   const handleFeedbackChange = (exerciseId: string, feedback: ExerciseFeedback) => {
-    setAppData((previous) => ({ ...previous, submissionId: undefined, currentFeedback: { ...previous.currentFeedback, [exerciseId]: feedback } }));
+    setAppData((previous) => ({
+      ...previous,
+      draftDate: workout?.date || dateKey(),
+      submissionId: undefined,
+      currentFeedback: { ...previous.currentFeedback, [exerciseId]: feedback },
+    }));
   };
 
   const checkFilledToday = () => {
@@ -205,7 +229,7 @@ const App: React.FC = () => {
   };
 
   const finishLocally = (weightValue: string, type: 'rest' | 'workout', syncedToNotion: boolean, summary?: WorkoutReviewPayload) => {
-    const currentDate = dateKey();
+    const currentDate = summary?.date || workout?.date || dateKey();
     const weightRecords = [...appData.weightRecords];
     if (weightValue) {
       weightRecords.push({ date: currentDate, val: weightValue });
@@ -228,6 +252,7 @@ const App: React.FC = () => {
       workoutStartedAt: undefined,
       currentExerciseId: undefined,
       submissionId: undefined,
+      draftDate: undefined,
     }));
     setModalData({ type });
     if (type === 'workout' && summary) {
@@ -301,7 +326,7 @@ const App: React.FC = () => {
     if (!workout || workout.isRecoveryDay || !workout.exercises.length || checkFilledToday()) return;
     const firstUnfinished = workout.exercises.find((exercise) =>
       (appData.currentSession[exercise.exerciseId] || []).filter((set) => set.completed).length < exercise.planSets);
-    setAppData((previous) => ({ ...previous, workoutStartedAt: previous.workoutStartedAt ?? Date.now(),
+    setAppData((previous) => ({ ...previous, draftDate: workout.date, workoutStartedAt: previous.workoutStartedAt ?? Date.now(),
       currentExerciseId: exerciseId || previous.currentExerciseId || firstUnfinished?.exerciseId || workout.exercises[0].exerciseId }));
     setModal('none');
     setIsWorkoutMode(true);
@@ -320,7 +345,7 @@ const App: React.FC = () => {
       setModal('none');
       return;
     }
-    const currentDate = dateKey();
+    const currentDate = workout?.date || dateKey();
     const weightRecords = [...appData.weightRecords];
     const existing = weightRecords.findIndex((record) => record.date === currentDate);
     if (existing >= 0) weightRecords[existing] = { date: currentDate, val: value };

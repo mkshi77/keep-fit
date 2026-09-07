@@ -191,6 +191,12 @@ describe('workout completion status', () => {
         sets: [{ weight: '80', reps: '10', completed: true }, { weight: '', reps: '', completed: false }],
         feedback: { rir: 2, asymmetry: 0 as const, discomfort: 0 },
       };
+      await expect(completeWorkoutInNotion({
+        date, trainingDay: 'A', submissionId: 'wrong-set-count',
+        exercises: [{ ...exercise, sets: [{ weight: '80', reps: '10', completed: true }] }],
+      })).rejects.toThrow('必须提交 2 个计划组');
+      expect(updates).toHaveLength(0);
+
       const partial = await completeWorkoutInNotion({
         date, trainingDay: 'A', submissionId: 'submission-1', exercises: [exercise],
       });
@@ -216,6 +222,8 @@ describe('workout completion status', () => {
         date, trainingDay: 'A', submissionId: 'submission-2', exercises: [exercise],
       });
       expect(retry.updated).toBe(0);
+      expect(retry.workoutCompleted).toBe(true);
+      expect(retry.exercises).toEqual([{ exerciseId: 'leg_press', notionPageId: 'execution-row', status: 'completed' }]);
       expect(updates).toHaveLength(0);
     });
     } finally {

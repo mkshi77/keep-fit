@@ -1,36 +1,38 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const plan = {
-  date: new Date().toLocaleDateString('en-CA'), trainingDay: 'A', isRecoveryDay: false, source: 'notion',
+  // Deliberately differs from the browser's date: the server workout date is canonical.
+  date: '2030-01-07', trainingDay: 'A', isRecoveryDay: false, source: 'notion',
   exercises: [
     { exerciseId: 'bench', notionPageId: 'bench-page', name: '史密斯平板卧推', planSets: 2, planReps: '8–10', planWeight: '40 kg' },
     { exerciseId: 'row', notionPageId: 'row-page', name: '坐姿绳索划船', planSets: 2, planReps: '10–12', planWeight: '45 kg' },
   ],
 };
 
-async function setup(page: Page, options: { recovery?: boolean; completed?: boolean; draft?: boolean; review?: boolean; failSave?: boolean } = {}) {
+async function setup(page: Page, options: { recovery?: boolean; completed?: boolean; draft?: boolean; review?: boolean; failSave?: boolean | number } = {}) {
   const calls: { submissions: any[]; reviews: number } = { submissions: [], reviews: 0 };
-  await page.addInitScript(({ completed, draft, review }) => {
+  await page.addInitScript(({ completed, draft, review, businessDate, cachedPlan }) => {
     if (localStorage.getItem('e2e-seeded')) return;
     const now = new Date();
     const date = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     localStorage.setItem('FILLUP_2026_V26_STABLE', JSON.stringify({
       lastLogin: now.toDateString(), history: {
-        ...(completed ? { [date]: { type: 'workout', workoutPlan: 'A', syncedToNotion: true } } : {}),
+        ...(completed ? { [businessDate]: { type: 'workout', workoutPlan: 'A', syncedToNotion: true } } : {}),
         ...(review ? { '2026-09-01': { type: 'workout', workoutPlan: 'A', syncedToNotion: true } } : {}),
       }, weightRecords: [{ date, val: '70' }], lastWeights: {},
       currentSession: draft ? { bench: [{ weight: '40', reps: '8', completed: true }] } : {}, currentFeedback: {},
-      ...(draft ? { workoutStartedAt: Date.now(), currentExerciseId: 'bench' } : {}),
+      ...(draft ? { draftDate: businessDate, workoutCache: cachedPlan, workoutStartedAt: Date.now(), currentExerciseId: 'bench' } : {}),
     }));
     localStorage.setItem('e2e-seeded', 'yes');
-  }, options);
+  }, { ...options, businessDate: plan.date, cachedPlan: plan });
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/api/auth/session') return route.fulfill({ json: { authenticated: true } });
     if (url.pathname === '/api/workout/today') return route.fulfill({ json: options.recovery ? { ...plan, trainingDay: null, isRecoveryDay: true, exercises: [] } : plan });
     if (url.pathname === '/api/workout/complete') {
       calls.submissions.push(route.request().postDataJSON());
-      if (options.failSave && calls.submissions.length === 1) return route.fulfill({ status: 503, json: { error: 'Notion 暂时不可用' } });
+      const failures = options.failSave === true ? 1 : typeof options.failSave === 'number' ? options.failSave : 0;
+      if (calls.submissions.length <= failures) return route.fulfill({ status: 503, json: { error: 'Notion 暂时不可用' } });
       return route.fulfill({ json: { success: true } });
     }
     if (url.pathname === '/api/ai/workout-review') {
@@ -90,6 +92,9 @@ test('partial completion asks first, preserves draft on failure and retries with
   expect(calls.submissions[1].exercises[1].sets.every((set: any) => !set.completed && !set.weight && !set.reps)).toBe(true);
   await page.getByRole('button', { name: '返回今日', exact: true }).click();
   await expect(page.getByRole('button', { name: '今日已完成 ✓' })).toBeDisabled();
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('FILLUP_2026_V26_STABLE') || '{}'));
+  expect(saved.history[plan.date]?.syncedToNotion).toBe(true);
+  expect(saved.history[new Date().toLocaleDateString('en-CA')]).toBeUndefined();
 });
 
 test('all sets complete shows feedback then saves directly, generating one review', async ({ page }) => {
@@ -112,11 +117,32 @@ test('all sets complete shows feedback then saves directly, generating one revie
   expect(calls.reviews).toBe(1);
 });
 
+test('editing set data after a failed retry generates a new submission id', async ({ page }) => {
+  const calls = await setup(page, { failSave: 2 });
+  await page.getByRole('button', { name: '开始训练', exact: true }).click();
+  await page.getByRole('button', { name: '完成本组' }).click();
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await page.getByRole('button', { name: '结束训练', exact: true }).click();
+    await page.getByRole('button', { name: '结束并保存当前完成内容' }).click();
+    await expect(page.getByText(/Notion 暂时不可用；本地草稿已保留/)).toBeVisible();
+  }
+  expect(calls.submissions[0].submissionId).toBe(calls.submissions[1].submissionId);
+
+  await page.getByLabel('重量 KG').fill('41');
+  await page.getByRole('button', { name: '结束训练', exact: true }).click();
+  await page.getByRole('button', { name: '结束并保存当前完成内容' }).click();
+  await expect(page.getByRole('heading', { name: '训练已保存', exact: true })).toBeVisible();
+  expect(calls.submissions[2].submissionId).not.toBe(calls.submissions[1].submissionId);
+});
+
 test('recovery is local and completed Today cannot restart', async ({ page }) => {
   const calls = await setup(page, { recovery: true });
   await page.getByRole('button', { name: '记录恢复日' }).click();
   await page.getByRole('button', { name: /跳过/ }).click();
   expect(calls.submissions).toHaveLength(0);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('FILLUP_2026_V26_STABLE') || '{}'));
+  expect(saved.history[plan.date]?.type).toBe('rest');
 });
 
 test('390×844 Today and workout do not overflow horizontally', async ({ page }, testInfo) => {

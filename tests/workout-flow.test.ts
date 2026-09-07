@@ -42,8 +42,28 @@ describe('Today and Workout flow', () => {
 
   it('persists today draft metadata and discards it on a new day', () => {
     const data = { lastLogin: new Date().toDateString(), currentSession: { bench: [done] }, workoutStartedAt: 123, currentExerciseId: 'bench', submissionId: 'retry' };
-    expect(loadLocalData(JSON.stringify(data))).toMatchObject(data);
+    expect(loadLocalData(JSON.stringify(data))).toMatchObject({
+      ...data,
+      lastLogin: new Date().toDateString(),
+    });
     expect(loadLocalData(JSON.stringify({ ...data, lastLogin: 'yesterday' }))).toMatchObject({ currentSession: {}, workoutStartedAt: undefined, currentExerciseId: undefined, submissionId: undefined });
+  });
+
+  it('keeps a draft by the server business date even when the device login date changed', () => {
+    const data = {
+      lastLogin: 'device-yesterday',
+      draftDate: workout.date,
+      workoutCache: workout,
+      currentSession: { bench: [done] },
+      currentFeedback: { bench: { rir: 2 } },
+      workoutStartedAt: 123,
+      currentExerciseId: 'bench',
+      submissionId: 'retry-after-lost-response',
+    };
+    expect(loadLocalData(JSON.stringify(data))).toMatchObject({
+      ...data,
+      lastLogin: new Date().toDateString(),
+    });
   });
 
   it('chooses the previous same training day, excluding today and other plans', () => {
