@@ -25,9 +25,9 @@ const CoachInsight: React.FC<{ workout: TodayWorkout | null; history: Record<str
   }, [previousDate]);
 
   return (
-    <section className="rounded-2xl bg-[#20251b] p-4" aria-label="教练提示">
-      <div className="flex items-center justify-between gap-3"><h2 className="text-sm font-bold text-white">教练提示</h2>{review && <span className="text-xs text-gray-400">基于上次 {workout?.trainingDay} 日训练</span>}</div>
-      <p className="mt-3 text-sm leading-relaxed text-gray-300">{review || (hasDraft ? '训练进行中，草稿已保留。继续把每一组做扎实。' : workout?.isRecoveryDay ? '恢复也是训练的一部分。今天放慢一点，下次稳稳推进。' : '稳定的积累，会带来真正的改变。先热身，再把每一组做扎实。')}</p>
+    <section className="rounded-2xl bg-[#151515] px-4 py-3" aria-label="教练提示">
+      <div className="flex items-center justify-between gap-3"><h2 className="text-[11px] font-bold text-[#9EFF3F]">● AI 教练重点提醒</h2>{review && <span className="text-[10px] text-[#8B93A3]">针对今日训练</span>}</div>
+      <p className="mt-2 line-clamp-2 text-xs leading-5 text-[#D1D5DB]">{review || (hasDraft ? '训练进行中，草稿已保留。继续把每一组做扎实。' : workout?.isRecoveryDay ? '恢复也是训练的一部分。今天放慢一点，下次稳稳推进。' : '先稳定动作和轨迹，再根据末组 RIR 决定是否完成第 4 组。')}</p>
     </section>
   );
 };

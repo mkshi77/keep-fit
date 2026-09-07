@@ -45,7 +45,7 @@ const WeightChart: React.FC<WeightChartProps> = ({ records, onAddWeight }) => {
             <polyline 
                 points={points} 
                 fill="none" 
-                stroke="#ccff00" 
+                stroke="#9EFF3F"
                 strokeWidth="2" 
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
@@ -70,7 +70,7 @@ const WeightChart: React.FC<WeightChartProps> = ({ records, onAddWeight }) => {
             </button>
         </div>
       </div>
-      <div className="h-[100px] w-full relative bg-gradient-to-b from-[#111] to-black border-b border-[#222] overflow-hidden flex items-end px-2.5">
+      <div className="relative flex h-[100px] w-full items-end overflow-hidden border-b border-[#222] bg-[#0E0E0E] px-2.5">
         {renderChart()}
       </div>
     </div>

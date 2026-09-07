@@ -1,8 +1,11 @@
+import { Settings } from 'lucide-react';
 import React from 'react';
 import type { TodayWorkout } from '../types';
 
 interface TodaySummaryProps {
   workout: TodayWorkout | null;
+  filledCount: number;
+  onOpenSettings: () => void;
 }
 
 export const getTodaySummary = (workout: TodayWorkout | null) => {
@@ -16,7 +19,7 @@ export const getTodaySummary = (workout: TodayWorkout | null) => {
   };
 };
 
-const TodaySummary: React.FC<TodaySummaryProps> = ({ workout }) => {
+const TodaySummary: React.FC<TodaySummaryProps> = ({ workout, filledCount, onOpenSettings }) => {
   const summary = getTodaySummary(workout);
   const date = new Date((workout?.date || new Date().toISOString().slice(0, 10)) + 'T12:00:00');
   const validDate = !Number.isNaN(date.getTime()) ? date : new Date();
@@ -25,31 +28,25 @@ const TodaySummary: React.FC<TodaySummaryProps> = ({ workout }) => {
   const weekDay = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][validDate.getDay()];
 
   return (
-    <section className="px-4" aria-labelledby="today-summary-title">
-      <div className="rounded-2xl bg-[#0f0f0f] p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm text-gray-500">{month}/{day} · {weekDay}</p>
-            <h2 id="today-summary-title" className="mt-1 text-3xl font-black text-white">{summary.planLabel}</h2>
-          </div>
-          <span className="rounded-full bg-[#1d1d1d] px-3 py-1 text-xs font-bold text-gray-300">
-            {workout?.isRecoveryDay ? '恢复日' : workout?.trainingDay ? '训练日' : '加载中'}
-          </span>
+    <section className="px-4 pt-[calc(18px+env(safe-area-inset-top))]" aria-labelledby="today-summary-title">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold text-[#8B93A3]">{month}月{day}日 · {weekDay}</p>
+          <h1 id="today-summary-title" className="mt-1 text-[28px] font-black leading-8 tracking-tight text-[#F5F5F5]">今天训练</h1>
+          <p className="mt-1 text-xs font-medium text-[#8B93A3]">
+            {summary.exerciseCount} 个动作 · {summary.totalSets} 组 · 约 {summary.estimatedMinutes || 0} 分钟
+          </p>
         </div>
-
-        <dl className="mt-5 grid grid-cols-3 gap-3">
-          {[
-            { label: '动作', value: summary.exerciseCount },
-            { label: '组数', value: summary.totalSets },
-            { label: '预计', value: summary.estimatedMinutes + '分' },
-          ].map((item) => (
-            <div key={item.label} className="py-2 text-center">
-              <dt className="text-[11px] text-gray-500">{item.label}</dt>
-              <dd className="mt-1 text-xl font-black text-white">{item.value}</dd>
-            </div>
-          ))}
-        </dl>
+        <div className="flex items-center gap-1">
+          <h2 className="rounded-full bg-[#151515] px-2.5 py-1 text-[11px] font-bold text-[#F5F5F5]">
+            {workout?.isRecoveryDay ? '恢复日' : workout?.trainingDay ? `${workout.trainingDay} 日` : '同步中'}
+          </h2>
+          <button onClick={onOpenSettings} aria-label="设置" className="flex h-10 w-10 items-center justify-center rounded-full text-[#8B93A3]">
+            <Settings size={18} />
+          </button>
+        </div>
       </div>
+      <p className="mt-2 text-[10px] text-[#48484A]">已记录 {filledCount} 天</p>
     </section>
   );
 };

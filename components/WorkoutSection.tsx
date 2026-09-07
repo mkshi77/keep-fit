@@ -19,15 +19,16 @@ const WorkoutSection: React.FC<WorkoutSectionProps> = ({ workout, isLoading, onO
         <p className="rounded-2xl bg-[#161616] p-6 text-sm leading-relaxed text-gray-300">今天好好恢复。保持睡眠和轻度活动，为下一次训练蓄力。</p>
       ) : (
         <>
-          <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-bold">今日动作</h2><span className="text-sm text-gray-400">{workout?.exercises.length ?? 0} 个动作</span></div>
-          <ol className="divide-y divide-white/5 overflow-hidden rounded-2xl bg-[#161616]">
+          <div className="mb-2 flex items-center justify-between"><h2 className="text-base font-bold">今日动作</h2><span className="text-xs text-[#8B93A3]">{workout?.exercises.length ?? 0} 个动作</span></div>
+          <ol className="space-y-2">
             {workout?.exercises.map((exercise, index) => (
-              <li key={exercise.exerciseId}>
-                <button onClick={() => onOpenExerciseModal(exercise)} aria-label={exercise.name + ' 动作详情'} className="flex w-full items-center gap-3 px-3 py-4 text-left">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs text-gray-300">{index + 1}</span>
-                  <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg"><ExerciseCover exercise={exercise} /></span>
-                  <span className="min-w-0 flex-1"><span className="block break-words text-sm font-semibold">{exercise.name}</span><span className="mt-1 block text-xs text-gray-400">{exercise.planSets} × {exercise.planReps} · {exercise.planWeight || '重量待定'}</span></span>
-                  <ChevronRight size={18} className="shrink-0 text-gray-400" />
+              <li key={exercise.exerciseId} className="overflow-hidden rounded-2xl bg-[#151515]">
+                <button onClick={() => onOpenExerciseModal(exercise)} aria-label={exercise.name + ' 动作详情'} className="flex min-h-[68px] w-full items-center gap-3 px-3 py-2.5 text-left active:bg-[#1B1B1B]">
+                  <span className="w-5 shrink-0 text-center text-[10px] font-bold tabular-nums text-[#8B93A3]">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl"><ExerciseCover exercise={exercise} /></span>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-bold">{exercise.name}</span><span className="mt-1 block truncate text-[11px] text-[#8B93A3]">{exercise.planSets} 组 · {exercise.planReps} 次 · {exercise.planWeight || '重量待定'}</span></span>
+                  <span className="rounded-lg bg-[#1B1B1B] px-2 py-1 text-[10px] text-[#8B93A3]">说明</span>
+                  <ChevronRight size={14} className="sr-only" />
                 </button>
               </li>
             ))}

@@ -42,7 +42,7 @@ async function setup(page: Page, options: { recovery?: boolean; completed?: bool
     return route.fulfill({ json: {} });
   });
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'A 日', exact: true }).or(page.getByRole('heading', { name: 'Recovery', exact: true }))).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'A 日', exact: true }).or(page.getByRole('heading', { name: '恢复日', exact: true }))).toBeVisible();
   return calls;
 }
 
@@ -58,6 +58,7 @@ test('Today is read-only; detail starts the selected exercise; draft survives re
   await expect(mode.getByLabel('末组 RIR 0–10')).toHaveCount(0);
   await mode.getByRole('button', { name: '完成本组' }).click();
   await expect(mode.getByRole('timer')).toBeVisible();
+  await mode.getByRole('button', { name: /跳过休息/ }).click();
   await expect(mode.getByLabel('重量 KG')).toBeFocused();
   await mode.getByRole('button', { name: '暂存并返回' }).click();
   await expect(page.getByRole('button', { name: '继续训练 · 1/4 组' })).toBeVisible();
@@ -71,6 +72,7 @@ test('partial completion asks first, preserves draft on failure and retries with
   const calls = await setup(page, { failSave: true });
   await page.getByRole('button', { name: '开始训练', exact: true }).click();
   await page.getByRole('button', { name: '完成本组' }).click();
+  await page.getByRole('button', { name: /跳过休息/ }).click();
   await page.getByRole('button', { name: '结束训练', exact: true }).click();
   await expect(page.getByRole('alertdialog')).toContainText('还有 3 组未完成');
   await page.screenshot({ path: testInfo.outputPath('finish-confirmation.png') });
@@ -102,12 +104,13 @@ test('all sets complete shows feedback then saves directly, generating one revie
   await page.getByRole('button', { name: '开始训练', exact: true }).click();
   for (let exercise = 0; exercise < 2; exercise += 1) {
     await page.getByRole('button', { name: '完成本组' }).click();
+    await page.getByRole('button', { name: /跳过休息/ }).click();
     await page.getByRole('button', { name: '完成本组' }).click();
     await expect(page.getByLabel('末组 RIR 0–10')).toBeVisible();
     await page.getByLabel('末组 RIR 0–10').fill('2');
-    if (exercise === 0) await page.getByRole('button', { name: '下一动作' }).click();
+    if (exercise === 0) await page.getByRole('button', { name: /完成反馈 · 下一动作/ }).click();
+    else await page.getByRole('button', { name: /完成反馈 · 保存训练/ }).click();
   }
-  await page.getByRole('button', { name: '结束训练', exact: true }).click();
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
   await expect(page.getByRole('paragraph').filter({ hasText: '今天卧推很稳定，继续保持动作质量。' })).toBeVisible();
   expect(calls.submissions).toHaveLength(1);
@@ -121,6 +124,7 @@ test('editing set data after a failed retry generates a new submission id', asyn
   const calls = await setup(page, { failSave: 2 });
   await page.getByRole('button', { name: '开始训练', exact: true }).click();
   await page.getByRole('button', { name: '完成本组' }).click();
+  await page.getByRole('button', { name: /跳过休息/ }).click();
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     await page.getByRole('button', { name: '结束训练', exact: true }).click();

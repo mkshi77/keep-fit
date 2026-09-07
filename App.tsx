@@ -12,9 +12,6 @@ import type {
   WorkoutSet,
   WorkoutReviewPayload,
 } from './types';
-import Header from './components/Header';
-import WeightChart from './components/WeightChart';
-import StatsOverview from './components/StatsOverview';
 import WorkoutSection from './components/WorkoutSection';
 import WorkoutMode from './components/WorkoutMode';
 import TodaySummary from './components/TodaySummary';
@@ -29,6 +26,7 @@ import { WeightModal, HistoryModal, CelebrationLayer } from './components/Modals
 import { completeWorkout, getTodayWorkout } from './services/workoutApi';
 import { checkSession } from './services/authApi';
 import AuthGate from './components/AuthGate';
+import RecordsDashboard from './components/RecordsDashboard';
 
 const dateKey = () => {
   const now = new Date();
@@ -370,28 +368,26 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen text-white bg-black font-sans selection:bg-accent selection:text-black flex flex-col">
+    <div className="flex min-h-screen flex-col bg-[#080808] font-sans text-[#F5F5F5] selection:bg-accent selection:text-black">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className={activeTab === 'today' ? 'mx-auto w-full max-w-[440px]' : 'hidden'}>
-        <Header filledCount={Object.keys(appData.history).length} onOpenSettings={() => setModal('data')} />
-        <TodaySummary workout={workout} />
-        <main id="today-workout" className="px-4 mt-5 space-y-5 pb-[calc(100px+env(safe-area-inset-bottom))]">
+      <div className={activeTab === 'today' ? 'mx-auto min-h-[100dvh] w-full max-w-[440px]' : 'hidden'}>
+        <TodaySummary workout={workout} filledCount={Object.keys(appData.history).length} onOpenSettings={() => setModal('data')} />
+        <main id="today-workout" className="mt-4 space-y-4 px-4 pb-[calc(154px+env(safe-area-inset-bottom))]">
           <CoachInsight workout={workout} history={appData.history} hasDraft={hasDraft} />
           <WorkoutSection workout={workout} isLoading={isWorkoutLoading}
             onOpenExerciseModal={(exercise) => { setModalData(exercise); setModal('exercise'); }}
             onRetry={() => void syncWorkout()} />
-          <button onClick={handleMainAction} disabled={isFilled || !workout || (!workout.isRecoveryDay && !workout.exercises.length)}
-            className="h-14 w-full rounded-full bg-[#a4ff4f] text-base font-bold text-black disabled:bg-[#1a1a1a] disabled:text-gray-400">
-            {todayActionLabel(workout, isFilled, hasDraft, progress)}
-          </button>
         </main>
+        <div className="fixed bottom-[calc(70px+env(safe-area-inset-bottom))] left-1/2 z-[70] w-full max-w-[440px] -translate-x-1/2 bg-[#080808] px-4 py-3">
+          <button onClick={handleMainAction} disabled={isFilled || !workout || (!workout.isRecoveryDay && !workout.exercises.length)}
+            className="h-14 w-full rounded-2xl bg-[#9EFF3F] text-sm font-bold text-[#080808] active:scale-[0.98] disabled:bg-[#1B1B1B] disabled:text-[#8B93A3]">
+            {todayActionLabel(workout, isFilled, hasDraft, progress)}<span aria-hidden="true"> →</span>
+          </button>
+        </div>
       </div>
 
       <div className={activeTab === 'records' ? 'block' : 'hidden'}>
-        <main className="pb-28">
-          <WeightChart records={appData.weightRecords} onAddWeight={() => { setModalData(null); setModal('weight'); }} />
-          <StatsOverview history={appData.history} onDateClick={(date, record) => { setModalData({ date, record }); setModal('history'); }} />
-        </main>
+        <RecordsDashboard history={appData.history} weightRecords={appData.weightRecords} onAddWeight={() => { setModalData(null); setModal('weight'); }} onDateClick={(date, record) => { setModalData({ date, record }); setModal('history'); }} />
       </div>
 
       <div className={activeTab === 'coach' ? 'block' : 'hidden'}>
@@ -427,7 +423,7 @@ const App: React.FC = () => {
         />
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-[80] border-t border-[#252525] bg-black/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]" aria-label="主导航">
+      <nav className="fixed bottom-0 left-0 right-0 z-[80] border-t border-[#242426] bg-[#0E0E0E]/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]" aria-label="主导航">
         <div className="max-w-[440px] mx-auto h-[70px] grid grid-cols-3 px-4 gap-2">
           <button onClick={() => switchTab('today')} aria-current={activeTab === 'today' ? 'page' : undefined} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-black transition-colors ${activeTab === 'today' ? 'text-accent' : 'text-gray-600'}`}>
             <CalendarDays className="text-lg" />

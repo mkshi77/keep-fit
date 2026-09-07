@@ -1,4 +1,4 @@
-import { Layers, Shield, ArrowUp, Trash2 } from 'lucide-react';
+import { ArrowLeft, ArrowUp, Bot, History, Plus, Trash2 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { sendAIMessage } from '../services/aiApi';
 import {
@@ -203,35 +203,32 @@ const AIChat: React.FC<AIChatProps> = ({ context, reviewToken = 0 }) => {
     : context.workout?.trainingDay ? `${context.workout.trainingDay} 日` : '同步中';
 
   return (
-    <main className="h-[100dvh] max-w-[640px] mx-auto flex flex-col bg-black pb-[calc(70px+env(safe-area-inset-bottom))]">
-      <header className="px-5 pt-[calc(20px+env(safe-area-inset-top))] pb-4 border-b border-[#202020] bg-black/95 backdrop-blur-xl">
+    <main className="mx-auto flex h-[100dvh] max-w-[440px] flex-col bg-[#080808] pb-[calc(70px+env(safe-area-inset-bottom))]">
+      <header className="border-b border-[#242426] bg-[#0E0E0E]/95 px-4 pb-3 pt-[calc(14px+env(safe-area-inset-top))] backdrop-blur-xl">
         <div className="flex items-center justify-between">
-          <div>
-            <div className="text-accent text-[9px] font-mono tracking-[0.2em] mb-1">READ-ONLY COACH</div>
-            <h1 className="text-white text-2xl font-black italic">AI 教练</h1>
-            <p className="mt-1 text-[10px] text-gray-500">今日 {dayLabel} · 已完成 {completedSets}/{totalSets} 组</p>
-          </div>
+          <div className="flex items-center gap-2"><ArrowLeft size={18} className="text-[#8B93A3]" /><h1 className="text-lg font-black text-[#F5F5F5]">AI 教练</h1></div>
           <div className="flex items-center gap-2">
-            <div className="text-right">
-              <div className="px-3 py-1 rounded-full border border-accent/20 bg-accent/5 text-accent text-[10px] font-bold">{context.workout?.isRecoveryDay ? '恢复' : '训练'}</div>
-              <p className="text-gray-700 text-[9px] mt-1">写入需确认</p>
-            </div>
-            <button onClick={() => setIsConversationOpen(true)} aria-label="对话列表" className="w-9 h-9 rounded-xl bg-[#1a1a1a] border border-[#262626] text-gray-400">
-              <Layers className="text-sm" />
-            </button>
+            <button onClick={() => setIsConversationOpen(true)} aria-label="对话列表" className="flex h-9 items-center gap-1 rounded-xl bg-[#1B1B1B] px-2.5 text-[10px] text-[#8B93A3]"><History size={14} />历史</button>
+            <button onClick={() => void createAndSelectConversation()} aria-label="新对话" className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1B1B1B] text-[#F5F5F5]"><Plus size={16} /></button>
           </div>
         </div>
+        <div className="mt-3 flex items-center justify-between rounded-full bg-[#151515] px-3 py-2 text-[10px] text-[#8B93A3]"><span><span className="mr-2 text-[#9EFF3F]">●</span>训练进行中 · {completedSets}/{totalSets} 组 · 当前 {dayLabel}</span><span className="font-bold text-[#9EFF3F]">LIVE</span></div>
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-3 no-scrollbar">
         {messages.length === 0 && (
-          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center px-8">
-            <div className="w-16 h-16 rounded-2xl bg-accent/5 border border-accent/15 flex items-center justify-center mb-5"><Shield className="text-accent text-2xl" /></div>
-            <h2 className="text-white font-black italic text-lg">你的训练副驾</h2>
-            <p className="text-gray-600 text-xs leading-relaxed mt-2">可以回答今日训练和历史表现问题，帮助你决定重量和 RIR。</p>
-            <div className="grid grid-cols-2 gap-2 mt-6 w-full max-w-[340px]">
+          <div className="min-h-[360px] px-1 pt-1">
+            <div className="flex items-start gap-2">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#26351B] text-[#9EFF3F]"><Bot size={16} /></span>
+              <div className="rounded-2xl rounded-tl-sm bg-[#1C1C1E] p-4 text-xs leading-5 text-[#D1D5DB]">
+                <p>根据你的训练历史和今天的状态，我可以帮你：</p>
+                <ul className="mt-2 space-y-1 text-[#8B93A3]"><li>· 制定训练策略</li><li>· 分析动作表现</li><li>· 给出训练重量建议</li><li>· 解答训练问题</li></ul>
+              </div>
+            </div>
+            <p className="mb-2 mt-4 text-[10px] font-bold text-[#8B93A3]">你可以问我：</p>
+            <div className="flex flex-wrap gap-2">
               {['今天的训练重点？', '第 4 组该不该做？', '帮我检查当前组数', '这个动作哪里容易错？'].map((question) => (
-                <button key={question} onClick={() => setInput(question)} className="rounded-xl bg-[#151515] border border-[#252525] p-3 text-left text-[10px] leading-relaxed text-gray-400 hover:border-accent/30 hover:text-white">{question}</button>
+                <button key={question} onClick={() => setInput(question)} className="rounded-full bg-[#151515] px-3 py-2 text-left text-[10px] text-[#8B93A3] hover:text-white">{question}</button>
               ))}
             </div>
           </div>
@@ -259,9 +256,9 @@ const AIChat: React.FC<AIChatProps> = ({ context, reviewToken = 0 }) => {
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={submit} className="px-3 py-3 border-t border-[#222] bg-black/95 backdrop-blur-xl flex gap-2">
-        <input value={input} onChange={(event) => setInput(event.target.value)} maxLength={4000} placeholder="问一个训练问题..." className="flex-1 h-12 rounded-xl bg-[#181818] border border-[#303030] px-4 text-sm text-white outline-none focus:border-accent" />
-        <button aria-label="发送消息" disabled={isSending || !input.trim()} className="w-12 h-12 rounded-xl bg-accent text-black disabled:opacity-30"><ArrowUp /></button>
+      <form onSubmit={submit} className="flex gap-2 border-t border-[#242426] bg-[#0E0E0E]/95 px-3 py-3 backdrop-blur-xl">
+        <input value={input} onChange={(event) => setInput(event.target.value)} maxLength={4000} placeholder="问教练..." className="h-12 flex-1 rounded-full bg-[#1B1B1B] px-4 text-sm text-white outline-none focus:ring-1 focus:ring-[#9EFF3F]" />
+        <button aria-label="发送消息" disabled={isSending || !input.trim()} className="flex h-12 w-12 items-center justify-center rounded-full bg-[#9EFF3F] text-[#080808] disabled:opacity-30"><ArrowUp size={19} /></button>
       </form>
 
       {isConversationOpen && (
