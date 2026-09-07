@@ -1,4 +1,4 @@
-const CACHE_NAME = 'keep-fit-v3-local-assets';
+const CACHE_NAME = 'keep-fit-v4-icon-refresh';
 const APP_SHELL = ['/', '/index.html', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {
