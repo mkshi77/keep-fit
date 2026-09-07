@@ -1,3 +1,4 @@
+import { X, Download, Upload, Trash2, Info } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { DB_KEY } from '../constants';
 import { clearConversations, exportConversations, replaceConversations } from '../services/aiConversationStore';
@@ -131,7 +132,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
                     <div className="flex justify-between items-center">
                         <h2 className="text-white font-black text-lg italic">数据管理</h2>
                         <button onClick={onClose} className="w-7 h-7 rounded-full bg-[#222] text-gray-500 hover:text-white transition-colors flex items-center justify-center">
-                            <i className="fas fa-times text-xs"></i>
+                            <X className="text-xs" />
                         </button>
                     </div>
                 </div>
@@ -171,7 +172,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
                         onClick={handleExport}
                         className="w-full bg-accent text-black font-bold py-3.5 rounded-xl hover:bg-white transition-all shadow-[0_0_15px_rgba(204,255,0,0.2)] active:scale-95 flex items-center justify-center gap-2"
                     >
-                        <i className="fas fa-download"></i>
+                        <Download />
                         导出数据
                     </button>
 
@@ -179,7 +180,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
                         onClick={handleImport}
                         className="w-full bg-[#222] text-white font-bold py-3.5 rounded-xl hover:bg-[#333] transition-all active:scale-95 flex items-center justify-center gap-2 border border-[#333]"
                     >
-                        <i className="fas fa-upload"></i>
+                        <Upload />
                         导入数据
                     </button>
 
@@ -187,7 +188,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
                         onClick={handleClearData}
                         className="w-full bg-transparent text-red-500 font-bold py-3.5 rounded-xl hover:bg-red-500/10 transition-all active:scale-95 flex items-center justify-center gap-2 border border-red-500/30"
                     >
-                        <i className="fas fa-trash"></i>
+                        <Trash2 />
                         清除本地数据
                     </button>
 
@@ -201,7 +202,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
 
                     <div className="mt-4 p-3 bg-accent/5 border border-accent/10 rounded-lg">
                         <p className="text-accent/80 text-xs leading-relaxed">
-                            <i className="fas fa-info-circle mr-1"></i>
+                            <Info className="mr-1" />
                             导出文件是本地备份，包含训练草稿、缓存、体重数据和 AI 对话；旧备份中的历史饮食数据会保留兼容，不会导出或修改 Notion 中的其他记录。
                         </p>
                     </div>

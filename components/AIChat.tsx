@@ -1,3 +1,4 @@
+import { Layers, Shield, ArrowUp, Trash2 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { sendAIMessage } from '../services/aiApi';
 import {
@@ -216,7 +217,7 @@ const AIChat: React.FC<AIChatProps> = ({ context, reviewToken = 0 }) => {
               <p className="text-gray-700 text-[9px] mt-1">写入需确认</p>
             </div>
             <button onClick={() => setIsConversationOpen(true)} aria-label="对话列表" className="w-9 h-9 rounded-xl bg-[#1a1a1a] border border-[#262626] text-gray-400">
-              <i className="fas fa-layer-group text-sm" />
+              <Layers className="text-sm" />
             </button>
           </div>
         </div>
@@ -225,7 +226,7 @@ const AIChat: React.FC<AIChatProps> = ({ context, reviewToken = 0 }) => {
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-5 space-y-3 no-scrollbar">
         {messages.length === 0 && (
           <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center px-8">
-            <div className="w-16 h-16 rounded-2xl bg-accent/5 border border-accent/15 flex items-center justify-center mb-5"><i className="fas fa-shield-halved text-accent text-2xl" /></div>
+            <div className="w-16 h-16 rounded-2xl bg-accent/5 border border-accent/15 flex items-center justify-center mb-5"><Shield className="text-accent text-2xl" /></div>
             <h2 className="text-white font-black italic text-lg">你的训练副驾</h2>
             <p className="text-gray-600 text-xs leading-relaxed mt-2">可以回答今日训练和历史表现问题，帮助你决定重量和 RIR。</p>
             <div className="grid grid-cols-2 gap-2 mt-6 w-full max-w-[340px]">
@@ -260,7 +261,7 @@ const AIChat: React.FC<AIChatProps> = ({ context, reviewToken = 0 }) => {
 
       <form onSubmit={submit} className="px-3 py-3 border-t border-[#222] bg-black/95 backdrop-blur-xl flex gap-2">
         <input value={input} onChange={(event) => setInput(event.target.value)} maxLength={4000} placeholder="问一个训练问题..." className="flex-1 h-12 rounded-xl bg-[#181818] border border-[#303030] px-4 text-sm text-white outline-none focus:border-accent" />
-        <button aria-label="发送消息" disabled={isSending || !input.trim()} className="w-12 h-12 rounded-xl bg-accent text-black disabled:opacity-30"><i className="fas fa-arrow-up" /></button>
+        <button aria-label="发送消息" disabled={isSending || !input.trim()} className="w-12 h-12 rounded-xl bg-accent text-black disabled:opacity-30"><ArrowUp /></button>
       </form>
 
       {isConversationOpen && (
@@ -278,7 +279,7 @@ const AIChat: React.FC<AIChatProps> = ({ context, reviewToken = 0 }) => {
                     <p className="mt-1 text-[10px] text-gray-500">{conversation.type === 'daily-workout' ? '今日训练' : '普通对话'}</p>
                   </button>
                   <button onClick={() => void deleteConversation(conversation.id)} aria-label={`删除 ${conversation.title}`} className="h-9 w-9 shrink-0 rounded-lg bg-[#1a1a1a] text-gray-500">
-                    <i className="fas fa-trash text-xs" />
+                    <Trash2 className="text-xs" />
                   </button>
                 </div>
               ))}

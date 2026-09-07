@@ -48,4 +48,4 @@ npm test
 npm run build
 ```
 
-GitHub Pages workflow 暂时保留；只有 Vercel Preview 和 Production 均验证通过后才应停用。
+GitHub Pages workflow 已移除；Vercel 是唯一正式部署目标。

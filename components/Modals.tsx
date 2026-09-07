@@ -1,3 +1,4 @@
+import { X, Dumbbell } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { HistoryRecord } from '../types';
 import { DB_KEY, FALLBACK_PLANS } from '../constants';
@@ -106,7 +107,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({ date, record, onClos
     return (
         <Overlay onClick={onClose}>
             <div className="bg-black p-6 w-[85%] max-w-[320px] relative border border-[#333] animate-pop-in" onClick={e => e.stopPropagation()}>
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-600 hover:text-white"><i className="fas fa-times"></i></button>
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-600 hover:text-white"><X /></button>
                 <h3 className="text-white font-mono font-bold text-lg mb-6 border-l-2 border-accent pl-3">{date}</h3>
                 
                 <div className="max-h-[60vh] overflow-y-auto no-scrollbar">
@@ -141,7 +142,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({ date, record, onClos
                                                 return (
                                                     <div key={exerciseId} className="text-sm text-gray-300 flex items-center justify-between gap-2 border-b border-[#222] pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
                                                         <div className="flex items-center gap-2">
-                                                            <i className="fas fa-dumbbell text-[10px] text-accent"></i>
+                                                            <Dumbbell className="text-[10px] text-accent" />
                                                             <span>{exerciseNames[exerciseId] || exerciseId}</span>
                                                         </div>
                                                         <div className="text-xs font-mono text-gray-500">

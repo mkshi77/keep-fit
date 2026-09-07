@@ -1,3 +1,4 @@
+import { Settings } from 'lucide-react';
 import React from 'react';
 
 interface HeaderProps {
@@ -24,7 +25,7 @@ const Header: React.FC<HeaderProps> = ({ filledCount, onOpenSettings }) => {
           onClick={onOpenSettings}
           className="w-9 h-9 rounded-full bg-[#1a1a1a] border border-[#222] text-gray-500 hover:text-accent hover:border-accent/30 transition-all flex items-center justify-center"
         >
-          <i className="fas fa-cog text-sm"></i>
+          <Settings className="text-sm" />
         </button>
       </div>
 

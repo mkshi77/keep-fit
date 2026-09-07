@@ -1,3 +1,4 @@
+import { CheckCircle2, CalendarDays, TrendingUp, MessageCircle } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react';
 import { DB_KEY, FALLBACK_PLANS, FALLBACK_WEEKLY_SCHEDULE, FEEDBACK_TEXTS } from './constants';
 import type {
@@ -383,7 +384,7 @@ const App: React.FC = () => {
 
         <div className="fixed bottom-[calc(72px+env(safe-area-inset-bottom))] left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent pt-4 pb-2 px-5 z-50 flex justify-center pointer-events-none">
           <button onClick={handleMainAction} disabled={isSubmitting} className={`pointer-events-auto w-full max-w-[440px] h-[56px] font-black text-lg italic flex items-center justify-center transition-all active:scale-95 disabled:opacity-50 ${isFilled ? 'bg-[#111] text-accent border-2 border-accent' : 'bg-accent text-black'}`} style={{ clipPath: 'polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px)' }}>
-            {isSubmitting ? '正在写入 Notion...' : isFilled ? <><i className="fas fa-check-circle mr-2" />今日同步已完成</> : '完成打卡'}
+            {isSubmitting ? '正在写入 Notion...' : isFilled ? <><CheckCircle2 className="mr-2" />今日同步已完成</> : '完成打卡'}
           </button>
         </div>
       </div>
@@ -427,15 +428,15 @@ const App: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 z-[80] border-t border-[#252525] bg-black/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]" aria-label="主导航">
         <div className="max-w-[440px] mx-auto h-[70px] grid grid-cols-3 px-4 gap-2">
           <button onClick={() => switchTab('today')} aria-current={activeTab === 'today' ? 'page' : undefined} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-black transition-colors ${activeTab === 'today' ? 'text-accent' : 'text-gray-600'}`}>
-            <i className="fas fa-calendar-day text-lg" />
+            <CalendarDays className="text-lg" />
             <span>今日</span>
           </button>
           <button onClick={() => switchTab('records')} aria-current={activeTab === 'records' ? 'page' : undefined} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-black transition-colors ${activeTab === 'records' ? 'text-accent' : 'text-gray-600'}`}>
-            <i className="fas fa-chart-line text-lg" />
+            <TrendingUp className="text-lg" />
             <span>记录</span>
           </button>
           <button onClick={() => switchTab('coach')} aria-current={activeTab === 'coach' ? 'page' : undefined} className={`flex flex-col items-center justify-center gap-1 text-[10px] font-black transition-colors ${activeTab === 'coach' ? 'text-accent' : 'text-gray-600'}`}>
-            <i className="fas fa-comment-dots text-lg" />
+            <MessageCircle className="text-lg" />
             <span>教练</span>
           </button>
         </div>

@@ -1,3 +1,4 @@
+import { Play, Dumbbell, RotateCw, BatteryFull, PlayCircle, Info, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { DEFAULT_SETS } from '../constants';
 import type { ExerciseFeedback, ExercisePlan, TodayWorkout, WorkoutSet } from '../types';
@@ -70,7 +71,7 @@ const PreviewVideo: React.FC<{ src: string }> = ({ src }) => {
   return (
     <div ref={containerRef} className="relative w-full h-full" onClick={toggle}>
       <video ref={videoRef} src={src} muted loop playsInline preload="metadata" className="w-full h-full object-cover opacity-70 cursor-pointer" />
-      {!isPlaying && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-black/50 rounded-full p-4"><i className="fas fa-play text-white text-3xl" /></div></div>}
+      {!isPlaying && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-black/50 rounded-full p-4"><Play className="text-white text-3xl" /></div></div>}
     </div>
   );
 };
@@ -138,9 +139,9 @@ const WorkoutSection: React.FC<WorkoutSectionProps> = ({
   return (
     <section>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-white font-bold text-lg"><i className="fas fa-dumbbell text-accent mr-2" />今日训练</h2>
+        <h2 className="text-white font-bold text-lg"><Dumbbell className="text-accent mr-2" />今日训练</h2>
         <div className="flex items-center gap-2">
-          {workout?.source === 'fallback' && <button onClick={onRetry} className="text-[10px] text-orange-400 border border-orange-900/60 rounded px-2 py-1"><i className="fas fa-rotate mr-1" />重试同步</button>}
+          {workout?.source === 'fallback' && <button onClick={onRetry} className="text-[10px] text-orange-400 border border-orange-900/60 rounded px-2 py-1"><RotateCw className="mr-1" />重试同步</button>}
           <span className={`px-3 py-1 rounded-md text-xs font-black ${workout?.isRecoveryDay ? 'bg-rest text-black' : 'bg-accent text-black'}`}>
             {workout?.isRecoveryDay ? '恢复日' : `${workout?.trainingDay ?? '-'} 日`}
           </span>
@@ -151,7 +152,7 @@ const WorkoutSection: React.FC<WorkoutSectionProps> = ({
 
       {workout?.isRecoveryDay ? (
         <div className="bg-card rounded-2xl border border-[#222] p-8 text-center">
-          <i className="fas fa-battery-full text-rest text-3xl mb-3" />
+          <BatteryFull className="text-rest text-3xl mb-3" />
           <h3 className="font-black text-white text-lg">恢复日</h3>
           <p className="text-gray-500 text-xs mt-2">保持饮食、睡眠和轻度活动，为下一训练日充能。</p>
         </div>
@@ -178,11 +179,11 @@ const WorkoutSection: React.FC<WorkoutSectionProps> = ({
                   </button>
                   {exercise.youtube && (
                     <a href={exercise.youtube} target="_blank" rel="noreferrer" aria-label={`${exercise.name} 中文教学`} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 hover:text-white">
-                      <i className="fas fa-play-circle text-sm" />
+                      <PlayCircle className="text-sm" />
                     </a>
                   )}
                   <button type="button" onClick={() => setExpandedExerciseId(isExpanded ? null : exercise.exerciseId)} aria-label={isExpanded ? '收起动作' : '展开动作'} className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1a1a1a] text-gray-500">
-                    <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'} text-xs`} />
+                    {isExpanded ? <ChevronUp className="text-xs" /> : <ChevronDown className="text-xs" />}
                   </button>
                 </div>
 
@@ -193,12 +194,12 @@ const WorkoutSection: React.FC<WorkoutSectionProps> = ({
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 to-transparent pointer-events-none" />
                       <div className="absolute bottom-3 left-4 right-4 flex justify-between items-end pointer-events-none">
                         <div>
-                          <div className="flex items-center gap-2"><h3 className="font-black text-white text-lg tracking-wide italic">{exercise.name}</h3><i className="fas fa-circle-info text-accent/60 text-xs" /></div>
+                          <div className="flex items-center gap-2"><h3 className="font-black text-white text-lg tracking-wide italic">{exercise.name}</h3><Info className="text-accent/60 text-xs" /></div>
                           <p className="text-gray-400 text-[10px] font-mono mt-1">计划 {exercise.planWeight || '--'} · {exercise.planSets} × {exercise.planReps}</p>
                           <p className="text-gray-600 text-[10px] font-mono">基线 {exercise.baseline || lastWeights[exercise.exerciseId] || '--'}</p>
                         </div>
                       </div>
-                      {exercise.youtube && <a href={exercise.youtube} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="absolute top-3 right-3 px-3 py-2 rounded-lg bg-red-600/90 text-white text-[10px] font-bold"><i className="fab fa-youtube mr-1" />中文教学</a>}
+                      {exercise.youtube && <a href={exercise.youtube} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="absolute top-3 right-3 px-3 py-2 rounded-lg bg-red-600/90 text-white text-[10px] font-bold"><Play className="mr-1 inline" />中文教学</a>}
                     </div>
 
                     <div className="px-4 py-4">
@@ -211,8 +212,8 @@ const WorkoutSection: React.FC<WorkoutSectionProps> = ({
                               <div className="flex-1 h-10 rounded-lg flex items-center px-3 bg-[#181818] border border-[#2a2a2a]"><input type="number" inputMode="decimal" className="bg-transparent text-white text-right w-full outline-none font-mono text-base font-bold" placeholder="-" value={set.weight} onChange={(event) => updateSet(exercise, index, 'weight', event.target.value)} disabled={set.completed} /><span className="text-[10px] text-gray-600 ml-1.5 font-bold">KG</span></div>
                               <span className="text-gray-800 text-xs">×</span>
                               <div className="flex-1 h-10 rounded-lg flex items-center px-3 bg-[#181818] border border-[#2a2a2a]"><input type="number" inputMode="numeric" className="bg-transparent text-white text-center w-full outline-none font-mono text-base font-bold" placeholder="10" value={set.reps} onChange={(event) => updateSet(exercise, index, 'reps', event.target.value)} disabled={set.completed} /><span className="text-[10px] text-gray-600 ml-1 font-bold">REPS</span></div>
-                              <button onClick={(event) => { updateSet(exercise, index, 'completed', !set.completed); if (!set.completed) onFeedback(event.clientX - 60, event.clientY - 40, 'workout'); }} className={`w-11 h-10 rounded-lg flex items-center justify-center transition-all ${set.completed ? 'bg-accent text-black' : 'bg-[#222] text-gray-700 border border-[#333]'}`}><i className="fas fa-check" /></button>
-                              {index >= DEFAULT_SETS && !set.completed && <button onClick={() => removeSet(exercise, index)} aria-label="删除额外组" className="text-red-900 px-1"><i className="fas fa-times" /></button>}
+                              <button onClick={(event) => { updateSet(exercise, index, 'completed', !set.completed); if (!set.completed) onFeedback(event.clientX - 60, event.clientY - 40, 'workout'); }} className={`w-11 h-10 rounded-lg flex items-center justify-center transition-all ${set.completed ? 'bg-accent text-black' : 'bg-[#222] text-gray-700 border border-[#333]'}`}><Check /></button>
+                              {index >= DEFAULT_SETS && !set.completed && <button onClick={() => removeSet(exercise, index)} aria-label="删除额外组" className="text-red-900 px-1"><X /></button>}
                             </div>
                           </div>
                         ))}

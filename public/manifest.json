@@ -1,7 +1,7 @@
 {
-    "name": "Fill Up 2026 - 细狗长了么",
-    "short_name": "Fill Up",
-    "description": "健身打卡与训练追踪应用",
+    "name": "Keep Fit",
+    "short_name": "Keep Fit",
+    "description": "Keep Fit — 健身打卡与训练追踪",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",

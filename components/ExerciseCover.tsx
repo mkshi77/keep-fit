@@ -1,3 +1,4 @@
+import { Play } from 'lucide-react';
 import React from 'react';
 import type { ExercisePlan } from '../types';
 
@@ -38,7 +39,7 @@ const ExerciseCover: React.FC<ExerciseCoverProps> = ({ exercise }) => {
       <div className="absolute -left-10 bottom-[-50px] w-52 h-28 rotate-[-12deg] bg-gradient-to-r from-red-600/20 to-transparent" />
       <div className="absolute inset-0 flex items-center justify-center pb-4">
         <div className="w-16 h-11 rounded-xl bg-red-600/90 shadow-[0_0_28px_rgba(220,38,38,0.25)] flex items-center justify-center">
-          <i className="fab fa-youtube text-white text-2xl" />
+          <Play className="text-white text-2xl" />
         </div>
       </div>
       <div className="absolute top-4 left-4 font-mono text-[9px] font-black tracking-[0.24em] text-white/35">FORM GUIDE / 中文教学</div>

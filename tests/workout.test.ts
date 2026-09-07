@@ -146,6 +146,13 @@ describe('provider and PWA boundaries', () => {
     expect(source).toContain("url.pathname.startsWith('/api/')");
     expect(source).toMatch(/startsWith\('\/api\/'\)[\s\S]*respondWith\(fetch\(request\)\)[\s\S]*return/);
   });
+  it('uses locally bundled styles and icons instead of CDNs', () => {
+    const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    expect(html).not.toContain('cdn.tailwindcss.com');
+    expect(html).not.toContain('cdnjs.cloudflare.com');
+    expect(pkg.dependencies).toHaveProperty('lucide-react');
+  });
 
   it('returns a fallback response when NOTION_TOKEN is absent', async () => {
     const previous = process.env.NOTION_TOKEN;
