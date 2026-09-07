@@ -46,3 +46,16 @@ self.addEventListener('fetch', (event) => {
     return response;
   })));
 });
+
+// ── Web Push ────────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || 'Keep Fit';
+  const body = data.body || '该训练了！';
+  event.waitUntil(self.registration.showNotification(title, { body, icon: '/icon-192.png', badge: '/icon-192.png' }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(self.clients.openWindow('/'));
+});

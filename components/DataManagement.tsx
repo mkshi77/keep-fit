@@ -1,6 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DB_KEY } from '../constants';
 import { clearConversations, exportConversations, replaceConversations } from '../services/aiConversationStore';
+import { isPushSupported, getNotificationPermission, subscribeToPush, unsubscribeFromPush } from '../services/pushService';
 
 interface DataManagementProps {
     onClose: () => void;
@@ -10,6 +11,14 @@ interface DataManagementProps {
 
 const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onError }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [pushEnabled, setPushEnabled] = useState(false);
+    const [pushTime, setPushTime] = useState('20:30');
+    const [pushPermission, setPushPermission] = useState<string>('');
+    const [isPushLoading, setIsPushLoading] = useState(false);
+
+    useEffect(() => {
+        setPushPermission(getNotificationPermission());
+    }, []);
 
     const handleExport = async () => {
         try {
@@ -82,6 +91,37 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
         }
     };
 
+    const handlePushToggle = async () => {
+        if (!isPushSupported()) { onError('浏览器不支持 Web Push'); return; }
+        setIsPushLoading(true);
+        try {
+            if (pushEnabled) {
+                await unsubscribeFromPush();
+                setPushEnabled(false);
+                onSuccess('训练提醒已关闭');
+            } else {
+                await subscribeToPush(pushTime);
+                setPushEnabled(true);
+                setPushPermission(Notification.permission);
+                onSuccess(`训练提醒已开启，每天 ${pushTime} 提醒`);
+            }
+        } catch (err) {
+            onError(err instanceof Error ? err.message : '推送设置失败');
+        } finally {
+            setIsPushLoading(false);
+        }
+    };
+
+    const handleTimeChange = async (newTime: string) => {
+        setPushTime(newTime);
+        if (pushEnabled) {
+            try {
+                await subscribeToPush(newTime);
+                onSuccess(`提醒时间已更新为 ${newTime}`);
+            } catch { /* keep old subscription */ }
+        }
+    };
+
     return (
         <div className="fixed inset-0 bg-black/95 z-[150] flex items-center justify-center p-4 backdrop-blur-xl">
             <div className="absolute inset-0" onClick={onClose}></div>
@@ -97,6 +137,36 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
                 </div>
 
                 <div className="p-5 space-y-3">
+                    <div className="border border-[#262626] rounded-xl p-3.5 space-y-2.5">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-gray-300">🏋️ 训练提醒</span>
+                            <button
+                                onClick={() => void handlePushToggle()}
+                                disabled={isPushLoading || !isPushSupported()}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors disabled:opacity-40 ${pushEnabled ? 'bg-accent text-black' : 'bg-[#252525] text-gray-400 border border-[#353535]'}`}
+                            >
+                                {isPushLoading ? '...' : pushEnabled ? '已开启' : '开启'}
+                            </button>
+                        </div>
+                        {pushEnabled && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-500">提醒时间</span>
+                                <input
+                                    type="time"
+                                    value={pushTime}
+                                    onChange={(e) => void handleTimeChange(e.target.value)}
+                                    className="bg-[#1a1a1a] border border-[#303030] rounded-lg px-2.5 py-1.5 text-sm text-white"
+                                />
+                            </div>
+                        )}
+                        {pushPermission === 'denied' && (
+                            <p className="text-[10px] text-orange-400">通知权限已被拒绝，请在浏览器设置中开启</p>
+                        )}
+                        {!isPushSupported() && (
+                            <p className="text-[10px] text-gray-600">当前浏览器不支持推送通知</p>
+                        )}
+                    </div>
+
                     <button
                         onClick={handleExport}
                         className="w-full bg-accent text-black font-bold py-3.5 rounded-xl hover:bg-white transition-all shadow-[0_0_15px_rgba(204,255,0,0.2)] active:scale-95 flex items-center justify-center gap-2"
