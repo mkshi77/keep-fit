@@ -9,7 +9,10 @@ import {
   saveConversation,
   sortConversations,
 } from '../services/aiConversationStore';
-import type { AIChatMessage, AIConversation, AIWorkoutContext } from '../types';
+import type { AIActionProposal, AIChatMessage, AIConversation, AIWorkoutContext } from '../types';
+import { submitTrainingFeedback } from '../services/trainingFeedbackApi';
+
+const ACTION_BLOCK_RE = /```action\s*\n([\s\S]*?)```/;
 
 interface AIChatProps {
   context: AIWorkoutContext;
@@ -30,6 +33,8 @@ const AIChat: React.FC<AIChatProps> = ({ context, reviewToken = 0 }) => {
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState('');
+  const [pendingProposal, setPendingProposal] = useState<AIActionProposal | null>(null);
+  const [isWritingFeedback, setIsWritingFeedback] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -111,13 +116,41 @@ const AIChat: React.FC<AIChatProps> = ({ context, reviewToken = 0 }) => {
 
     try {
       const reply = await sendAIMessage(nextMessages, context);
-      await persistMessages(conversationId, [...nextMessages, { role: 'assistant', content: reply }]);
+      const cleanReply = reply.replace(ACTION_BLOCK_RE, '').trim();
+      const actionMatch = reply.match(ACTION_BLOCK_RE);
+      let proposal: AIActionProposal | null = null;
+      if (actionMatch) {
+        try {
+          const parsed = JSON.parse(actionMatch[1]) as Partial<AIActionProposal>;
+          if (parsed.action === 'record_training_feedback' && typeof parsed.raw === 'string' && parsed.raw.trim()) {
+            proposal = { ...parsed, action: 'record_training_feedback', raw: parsed.raw.trim() } as AIActionProposal;
+          }
+        } catch { /* ignore malformed proposal */ }
+      }
+      if (proposal) setPendingProposal(proposal);
+      await persistMessages(conversationId, [...nextMessages, { role: 'assistant', content: cleanReply }]);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'AI 服务暂时不可用');
     } finally {
       setIsSending(false);
     }
   };
+
+  const confirmProposal = async () => {
+    if (!pendingProposal || isWritingFeedback) return;
+    setIsWritingFeedback(true);
+    setError('');
+    try {
+      await submitTrainingFeedback({ ...pendingProposal, date: todayKey() });
+      setPendingProposal(null);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : '训练反馈写入失败');
+    } finally {
+      setIsWritingFeedback(false);
+    }
+  };
+
+  const cancelProposal = () => setPendingProposal(null);
 
   const switchConversation = async (conversationId: string) => {
     setActiveId(conversationId);
@@ -205,6 +238,21 @@ const AIChat: React.FC<AIChatProps> = ({ context, reviewToken = 0 }) => {
         {messages.map((message, index) => (
           <div key={index} className={`max-w-[86%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${message.role === 'user' ? 'ml-auto bg-accent text-black rounded-br-sm' : 'bg-[#1c1c1c] border border-[#292929] text-gray-200 rounded-bl-sm'}`}>{message.content}</div>
         ))}
+        {pendingProposal && (
+          <div className='max-w-[86%] rounded-2xl border border-accent/30 bg-accent/5 p-3.5'>
+            <p className='text-accent text-[9px] font-mono tracking-[0.15em] mb-2'>训练反馈写入确认</p>
+            <div className='space-y-1 text-xs text-gray-300'>
+              {pendingProposal.exerciseName && <p>动作：{pendingProposal.exerciseName}</p>}
+              {pendingProposal.bodyPart && <p>部位：{pendingProposal.bodyPart}</p>}
+              {pendingProposal.severity != null && <p>严重度：{pendingProposal.severity}/10</p>}
+              <p className='text-gray-500 text-[10px]'>原文：{pendingProposal.raw}</p>
+            </div>
+            <div className='flex gap-2 mt-3'>
+              <button onClick={() => void confirmProposal()} disabled={isWritingFeedback} className='flex-1 h-9 rounded-lg bg-accent text-black text-xs font-bold disabled:opacity-30'>{isWritingFeedback ? '写入中...' : '写入 Notion'}</button>
+              <button onClick={cancelProposal} disabled={isWritingFeedback} className='flex-1 h-9 rounded-lg border border-[#303030] text-gray-400 text-xs disabled:opacity-30'>取消</button>
+            </div>
+          </div>
+        )}
         {isSending && <div className="bg-[#1c1c1c] border border-[#292929] text-gray-500 rounded-2xl rounded-bl-sm px-3.5 py-2.5 text-xs w-fit animate-pulse">正在分析今日训练...</div>}
         {error && <div className="rounded-xl border border-orange-900/50 bg-orange-950/20 text-orange-300 text-xs p-3">{error}。训练页和本地草稿不受影响。</div>}
         <div ref={messagesEndRef} />

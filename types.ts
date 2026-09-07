@@ -161,3 +161,37 @@ export interface WorkoutReviewPayload {
   durationMinutes?: number;
   exercises: WorkoutReviewExercise[];
 }
+
+export type TrainingFeedbackType =
+  | 'technical_issue'
+  | 'pain_discomfort'
+  | 'fatigue'
+  | 'asymmetry'
+  | 'weight_issue'
+  | 'equipment_issue'
+  | 'recovery_issue'
+  | 'other';
+
+export interface TrainingFeedbackPayload {
+  date: string;
+  exerciseId?: string;
+  exerciseName?: string;
+  type: TrainingFeedbackType;
+  severity?: number;
+  bodyPart?: string;
+  raw: string;
+  summary?: string;
+  updateTodayExercise?: boolean;
+}
+
+export interface AIActionProposal {
+  action: 'record_training_feedback';
+  type: TrainingFeedbackType;
+  severity?: number;
+  bodyPart?: string;
+  exerciseId?: string;
+  exerciseName?: string;
+  raw: string;
+  summary?: string;
+  updateTodayExercise?: boolean;
+}
