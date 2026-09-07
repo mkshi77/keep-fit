@@ -11,7 +11,7 @@ interface WorkoutSectionProps {
   feedbackData: Record<string, ExerciseFeedback>;
   onSessionChange: (newData: Record<string, WorkoutSet[]>, exerciseId?: string, weight?: string) => void;
   onFeedbackChange: (exerciseId: string, feedback: ExerciseFeedback) => void;
-  onFeedback: (x: number, y: number, type: 'diet' | 'workout') => void;
+  onFeedback: (x: number, y: number, type: 'workout') => void;
   onOpenExerciseModal: (exercise: ExercisePlan) => void;
   onRetry: () => void;
 }

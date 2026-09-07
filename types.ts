@@ -1,6 +1,6 @@
 export type TrainingDay = 'A' | 'B' | 'C';
 
-export interface DietItem {
+export interface LegacyDietItem {
   id: number;
   time: string;
   text: string;
@@ -56,7 +56,7 @@ export interface TodayWorkout {
 
 export interface HistoryRecord {
   type: 'workout' | 'rest';
-  diet: DietItem[];
+  diet?: LegacyDietItem[];
   workoutPlan: TrainingDay | null;
   workoutSession?: Record<string, WorkoutSet[]>;
   workoutFeedback?: Record<string, ExerciseFeedback>;
@@ -68,7 +68,6 @@ export interface AppData {
   history: Record<string, HistoryRecord>;
   weightRecords: WeightRecord[];
   lastWeights: Record<string, string>;
-  currentDiet: DietItem[];
   currentSession: Record<string, WorkoutSet[]>;
   currentFeedback: Record<string, ExerciseFeedback>;
   workoutCache?: TodayWorkout;

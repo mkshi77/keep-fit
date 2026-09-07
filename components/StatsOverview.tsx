@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { HistoryRecord } from '../types';
-import { ROAST_QUOTES, YEAR } from '../constants';
+import { YEAR } from '../constants';
 
 interface StatsOverviewProps {
   history: Record<string, HistoryRecord>;
@@ -8,8 +8,6 @@ interface StatsOverviewProps {
 }
 
 const StatsOverview: React.FC<StatsOverviewProps> = ({ history, onDateClick }) => {
-  const [quote, setQuote] = useState('');
-  
   // Initialize with Today's date to prevent "Loading..." flash
   const getInitialDateStr = () => {
     const today = new Date();
@@ -21,15 +19,6 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({ history, onDateClick }) =
   const [selectedDateStr, setSelectedDateStr] = useState(getInitialDateStr());
   const scrollRef = useRef<HTMLDivElement>(null);
   const todayRef = useRef<HTMLDivElement>(null);
-
-  // Quote Logic
-  const generateQuote = () => {
-    setQuote(ROAST_QUOTES[Math.floor(Math.random() * ROAST_QUOTES.length)]);
-  };
-
-  useEffect(() => {
-    generateQuote();
-  }, []);
 
   const formatDateDisplay = (dateKey: string) => {
       // dateKey is YYYY-MM-DD
@@ -108,32 +97,7 @@ const StatsOverview: React.FC<StatsOverviewProps> = ({ history, onDateClick }) =
   return (
     <div className="px-4 space-y-4 mb-4">
       
-      {/* 1. AI Coach Card (Moved Top) */}
-      <div className="bg-[#1a1625] rounded-2xl p-5 border border-[#2d2440] relative overflow-hidden shadow-lg">
-        {/* Glow effect */}
-        <div className="absolute -top-10 -right-10 w-32 h-32 bg-purple-500/10 blur-[50px] rounded-full pointer-events-none"></div>
-
-        <div className="flex justify-between items-start mb-3 relative z-10">
-            <div className="flex items-center gap-2">
-                <i className="fas fa-brain text-purple-400"></i>
-                <span className="font-bold text-purple-200 text-sm">AI 健身教练</span>
-            </div>
-            <button 
-                onClick={generateQuote}
-                className="bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors shadow-lg shadow-purple-900/50"
-            >
-                求鼓励
-            </button>
-        </div>
-
-        <div className="relative z-10">
-            <p className="text-gray-300 text-sm leading-relaxed font-mono">
-                "{quote}"
-            </p>
-        </div>
-      </div>
-
-      {/* 2. Heatmap Card */}
+      {/* Heatmap Card */}
       <div className="bg-[#111] rounded-2xl p-5 border border-[#222] shadow-xl">
         <div className="flex justify-between items-center mb-4">
             <h3 className="text-gray-400 font-mono text-xs tracking-widest uppercase">

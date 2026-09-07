@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { DB_KEY, FALLBACK_PLANS, FALLBACK_WEEKLY_SCHEDULE, FEEDBACK_TEXTS, INITIAL_DIET } from './constants';
+import { DB_KEY, FALLBACK_PLANS, FALLBACK_WEEKLY_SCHEDULE, FEEDBACK_TEXTS } from './constants';
 import type {
   AppData,
   ExerciseFeedback,
@@ -15,7 +15,6 @@ import type {
 import Header from './components/Header';
 import WeightChart from './components/WeightChart';
 import StatsOverview from './components/StatsOverview';
-import DietSection from './components/DietSection';
 import WorkoutSection from './components/WorkoutSection';
 import AIChat from './components/AIChat';
 import Toast from './components/Toast';
@@ -39,7 +38,6 @@ const INITIAL_DATA: AppData = {
   history: {},
   weightRecords: [],
   lastWeights: {},
-  currentDiet: INITIAL_DIET,
   currentSession: {},
   currentFeedback: {},
 };
@@ -53,19 +51,17 @@ const migrateHistory = (history: unknown): Record<string, HistoryRecord> => {
   }));
 };
 
-const loadLocalData = (raw: string | null): AppData => {
+export const loadLocalData = (raw: string | null): AppData => {
   if (!raw) return { ...INITIAL_DATA, lastLogin: todayLoginKey() };
   try {
-    const saved = JSON.parse(raw) as Partial<AppData>;
+    const saved = JSON.parse(raw) as Partial<AppData> & Record<string, unknown>;
+    delete saved.currentDiet;
     const sameDay = saved.lastLogin === todayLoginKey();
     return {
       ...INITIAL_DATA,
       ...saved,
       history: migrateHistory(saved.history),
       lastLogin: todayLoginKey(),
-      currentDiet: sameDay
-        ? (saved.currentDiet || INITIAL_DIET)
-        : (saved.currentDiet || INITIAL_DIET).map((item) => ({ ...item, checked: false })),
       currentSession: sameDay ? (saved.currentSession || {}) : {},
       currentFeedback: sameDay ? (saved.currentFeedback || {}) : {},
       workoutCache: saved.workoutCache?.date === dateKey() ? saved.workoutCache : undefined,
@@ -152,7 +148,6 @@ const App: React.FC = () => {
         if (allCompleted && !history[latest.date]) {
           history[latest.date] = {
             type: 'workout',
-            diet: [],
             workoutPlan: latest.trainingDay,
             workoutSession: currentSession,
             workoutFeedback: currentFeedback,
@@ -176,9 +171,9 @@ const App: React.FC = () => {
     if (isLoaded && isAuthenticated) void syncWorkout();
   }, [isLoaded, isAuthenticated, syncWorkout]);
 
-  const triggerFeedback = useCallback((x: number, y: number, type: 'diet' | 'workout') => {
+  const triggerFeedback = useCallback((x: number, y: number, type: 'workout') => {
     const texts = FEEDBACK_TEXTS[type];
-    const item = { id: Date.now(), x, y, text: texts[Math.floor(Math.random() * texts.length)], color: type === 'diet' ? '#ccff00' : '#00ccff' };
+    const item = { id: Date.now(), x, y, text: texts[Math.floor(Math.random() * texts.length)], color: '#00ccff' };
     setFeedbacks((previous) => [...previous, item]);
     window.setTimeout(() => setFeedbacks((previous) => previous.filter((entry) => entry.id !== item.id)), 2500);
   }, []);
@@ -207,7 +202,6 @@ const App: React.FC = () => {
     const history = { ...appData.history };
     history[currentDate] = {
       type,
-      diet: appData.currentDiet.filter((item) => item.checked),
       workoutPlan: type === 'workout' ? workout?.trainingDay ?? null : null,
       workoutSession: type === 'workout' ? appData.currentSession : undefined,
       workoutFeedback: type === 'workout' ? appData.currentFeedback : undefined,
@@ -347,7 +341,6 @@ const App: React.FC = () => {
         <StatsOverview history={appData.history} onDateClick={(date, record) => { setModalData({ date, record }); setModal('history'); }} />
 
         <main className="px-4 mt-6 pb-48">
-          <DietSection items={appData.currentDiet} setItems={(currentDiet) => setAppData((previous) => ({ ...previous, currentDiet }))} onFeedback={triggerFeedback} />
           <WorkoutSection
             workout={workout}
             isLoading={isWorkoutLoading}

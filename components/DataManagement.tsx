@@ -121,7 +121,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ onClose, onSuccess, onE
                     <div className="mt-4 p-3 bg-accent/5 border border-accent/10 rounded-lg">
                         <p className="text-accent/80 text-xs leading-relaxed">
                             <i className="fas fa-info-circle mr-1"></i>
-                            导出文件是 localStorage 本地备份，包含训练草稿、缓存、体重和饮食数据；不会导出或修改 Notion 中的其他记录。
+                            导出文件是 localStorage 本地备份，包含训练草稿、缓存、体重数据；旧备份中的历史饮食数据会保留兼容，不会导出或修改 Notion 中的其他记录。
                         </p>
                     </div>
                 </div>
