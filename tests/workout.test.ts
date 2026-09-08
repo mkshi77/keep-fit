@@ -102,6 +102,20 @@ describe('Notion join', () => {
     expect(workout.exercises).toHaveLength(1);
     expect(workout.exercises[0].notionPageId).toBe('canonical-row');
   });
+
+  it.each([0, 1.5, 5])('fails safely when Notion planSets is %s', (planSets) => {
+    const page = trainingPage('leg_press', 1);
+    page.properties['计划组数'] = number(planSets);
+    expect(() => joinWorkoutPages('2026-09-07', [page], [libraryPage('leg_press', '腿举')]))
+      .toThrow('计划组数必须是 1–4 的整数');
+  });
+
+  it('fails safely when Notion planSets is missing', () => {
+    const page = trainingPage('leg_press', 1);
+    delete page.properties['计划组数'];
+    expect(() => joinWorkoutPages('2026-09-07', [page], [libraryPage('leg_press', '腿举')]))
+      .toThrow('计划组数必须是 1–4 的整数');
+  });
 });
 
 describe('completion mapping', () => {
@@ -126,6 +140,34 @@ describe('completion mapping', () => {
       date: '2026-09-07', trainingDay: 'A',
       exercises: [{ exerciseId: 'x', notionPageId: 'page', sets: [], feedback: { asymmetry: 4 } }],
     })).toThrow('左右差异超出范围');
+  });
+
+  it.each([
+    { weight: '', reps: '8', completed: true },
+    { weight: '-1', reps: '8', completed: true },
+    { weight: 'Infinity', reps: '8', completed: true },
+    { weight: '40', reps: '', completed: true },
+    { weight: '40', reps: '0', completed: true },
+    { weight: '40', reps: '-2', completed: true },
+    { weight: '40', reps: '1.5', completed: true },
+  ])('rejects invalid completed set %#', (set) => {
+    expect(() => validateCompletionPayload({
+      date: '2026-09-07', trainingDay: 'A',
+      exercises: [{ exerciseId: 'x', notionPageId: 'page', sets: [set], feedback: {} }],
+    })).toThrow();
+  });
+
+  it('accepts bodyweight zero and ignores uncompleted values', () => {
+    expect(() => validateCompletionPayload({
+      date: '2026-09-07', trainingDay: 'A',
+      exercises: [{
+        exerciseId: 'x', notionPageId: 'page', feedback: {},
+        sets: [
+          { weight: '0', reps: '1', completed: true },
+          { weight: 'not persisted', reps: 'also ignored', completed: false },
+        ],
+      }],
+    })).not.toThrow();
   });
 });
 

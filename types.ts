@@ -71,7 +71,11 @@ export interface AppData {
   lastWeights: Record<string, string>;
   currentSession: Record<string, WorkoutSet[]>;
   currentFeedback: Record<string, ExerciseFeedback>;
+  draftDate?: string;
   workoutCache?: TodayWorkout;
+  workoutStartedAt?: number;
+  currentExerciseId?: string;
+  submissionId?: string;
 }
 
 export type WorkoutCompletionStatus = 'completed' | 'partial' | 'skipped';

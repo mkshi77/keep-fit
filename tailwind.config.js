@@ -4,16 +4,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: '#000000',
-        card: '#121212',
-        accent: '#ccff00',
-        'accent-dim': '#4d6600',
+        bg: '#080808',
+        card: '#151515',
+        accent: '#9EFF3F',
+        'accent-dim': '#365B18',
         rest: '#00ccff',
         'text-main': '#ffffff',
         'text-sub': '#888888',
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', 'Roboto', 'Helvetica', 'sans-serif'],
+        sans: ['"PingFang SC"', '"Noto Sans SC"', '-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', 'Roboto', 'Helvetica', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
       animation: {

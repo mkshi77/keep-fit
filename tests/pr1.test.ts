@@ -9,6 +9,7 @@ import {
   EXERCISE_DATA_SOURCE_ID,
 } from '../server/workout';
 import aiHandler from '../api/ai/chat';
+import authHandler from '../api/auth/session';
 import todayHandler from '../api/workout/today';
 import type { ApiResponse } from '../server/http';
 
@@ -45,6 +46,23 @@ const number = (value: number): NotionProperty => ({ type: 'number', number: val
 const checkbox = (value: boolean): NotionProperty => ({ type: 'checkbox', checkbox: value });
 
 describe('PR 1 auth and AI limiting', () => {
+  it('allows a production session check without an Origin header', async () => {
+    await withEnv({ APP_ACCESS_PASSWORD: 'test-password', VERCEL_ENV: 'production' }, async () => {
+      const { response, state } = mockResponse();
+      await authHandler({ method: 'GET', headers: { cookie: createSessionCookie('test-password') } }, response);
+      expect(state.status).toBe(200);
+      expect(state.body).toEqual({ authenticated: true });
+    });
+  });
+
+  it('still rejects a sign-out mutation without a matching browser origin', async () => {
+    await withEnv({ APP_ACCESS_PASSWORD: 'test-password', VERCEL_ENV: 'production' }, async () => {
+      const { response, state } = mockResponse();
+      await authHandler({ method: 'DELETE', headers: { cookie: createSessionCookie('test-password') } }, response);
+      expect(state.status).toBe(403);
+    });
+  });
+
   it('fails closed when access password is not configured', async () => {
     await withEnv({ APP_ACCESS_PASSWORD: undefined }, async () => {
       const { response, state } = mockResponse();
@@ -191,6 +209,12 @@ describe('workout completion status', () => {
         sets: [{ weight: '80', reps: '10', completed: true }, { weight: '', reps: '', completed: false }],
         feedback: { rir: 2, asymmetry: 0 as const, discomfort: 0 },
       };
+      await expect(completeWorkoutInNotion({
+        date, trainingDay: 'A', submissionId: 'wrong-set-count',
+        exercises: [{ ...exercise, sets: [{ weight: '80', reps: '10', completed: true }] }],
+      })).rejects.toThrow('必须提交 2 个计划组');
+      expect(updates).toHaveLength(0);
+
       const partial = await completeWorkoutInNotion({
         date, trainingDay: 'A', submissionId: 'submission-1', exercises: [exercise],
       });
@@ -216,6 +240,8 @@ describe('workout completion status', () => {
         date, trainingDay: 'A', submissionId: 'submission-2', exercises: [exercise],
       });
       expect(retry.updated).toBe(0);
+      expect(retry.workoutCompleted).toBe(true);
+      expect(retry.exercises).toEqual([{ exerciseId: 'leg_press', notionPageId: 'execution-row', status: 'completed' }]);
       expect(updates).toHaveLength(0);
     });
     } finally {
